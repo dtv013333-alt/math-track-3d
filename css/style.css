@@ -1,0 +1,954 @@
+/* ==========================================================================
+   3D 正負數加減法操場賽跑 (Three.js Math Track 3D) - Stylesheet
+   Matches Reference Images 1, 2, 3, and 4
+   ========================================================================== */
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+    -webkit-font-smoothing: antialiased;
+}
+
+body, html {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    font-family: "Microsoft JhengHei", "PingFang TC", "Noto Sans TC", sans-serif;
+    background-color: #9cd3f7;
+    color: #2c353d;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* 3D World Canvas */
+#world-canvas-container {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+}
+
+/* 3D Floating Runner Name Badges (Ref Images 2 & 3) */
+#floating-labels-layer {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 5;
+    overflow: hidden;
+}
+
+.runner-floating-tag {
+    position: absolute;
+    left: 0;
+    top: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 14px;
+    background: rgba(244, 245, 247, 0.94);
+    border: 1.5px solid #b8bec6;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #22282e;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12);
+    white-space: nowrap;
+    will-change: transform;
+}
+
+.runner-floating-tag.is-self {
+    padding: 6px 18px;
+    font-size: 14px;
+    border-color: #9ea6b0;
+    background: rgba(246, 247, 249, 0.97);
+}
+
+/* Top Right Weather & Camera Controls Bar */
+#top-env-bar {
+    position: fixed;
+    top: 14px;
+    right: 16px;
+    z-index: 30;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.90);
+    backdrop-filter: blur(8px);
+    padding: 7px 12px;
+    border-radius: 16px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.10);
+    border: 1px solid rgba(255, 255, 255, 0.8);
+}
+
+.weather-live-tag {
+    font-size: 12px;
+    font-weight: 700;
+    color: #455a64;
+    background: #e3f2fd;
+    padding: 4px 10px;
+    border-radius: 10px;
+}
+
+.weather-btn, .env-tool-btn {
+    border: 1.5px solid #d4dce4;
+    background: #f7f9fb;
+    color: #37474f;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 5px 11px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.16s ease;
+}
+
+.weather-btn:hover, .env-tool-btn:hover {
+    background: #edf2f7;
+}
+
+.weather-btn.active {
+    border-color: #f26b1d;
+    background: #fff3eb;
+    color: #d9530f;
+    font-weight: 700;
+}
+
+/* ==========================================================================
+   Character Creation Screen (Matches Reference Image 1)
+   ========================================================================== */
+#creator-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    background: rgba(241, 244, 248, 0.88);
+    backdrop-filter: blur(10px);
+    overflow-y: auto;
+    padding: 22px 24px 36px;
+    display: flex;
+    justify-content: center;
+}
+
+.creator-container {
+    width: 100%;
+    max-width: 780px;
+}
+
+.creator-header-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #4a5568;
+    margin-bottom: 16px;
+    letter-spacing: 0.3px;
+}
+
+.creator-body {
+    display: flex;
+    gap: 24px;
+    align-items: flex-start;
+}
+
+/* Left 3D Preview Card */
+.creator-preview-card {
+    width: 220px;
+    flex-shrink: 0;
+    background: linear-gradient(180deg, #d7ecf7 0%, #e5f2d6 100%);
+    border-radius: 18px;
+    padding: 18px 14px 10px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: sticky;
+    top: 16px;
+}
+
+.preview-name-banner {
+    width: 100%;
+    background: #ffffff;
+    border: 2px solid #9fa6ad;
+    border-radius: 9px;
+    padding: 7px 10px;
+    text-align: center;
+    font-size: 17px;
+    font-weight: 800;
+    color: #1f2428;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.06);
+}
+
+#char-preview-canvas-wrap {
+    width: 220px;
+    height: 290px;
+    cursor: grab;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#char-preview-canvas-wrap:active {
+    cursor: grabbing;
+}
+
+.preview-drag-tip {
+    font-size: 12px;
+    color: #6c7a72;
+    margin-top: -6px;
+    margin-bottom: 4px;
+}
+
+/* Right Form Controls */
+.creator-form-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.form-label {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: #5a6570;
+}
+
+.form-input {
+    width: 100%;
+    padding: 10px 14px;
+    font-size: 15px;
+    border: 1.5px solid #cfd8e0;
+    border-radius: 10px;
+    background: rgba(248, 250, 252, 0.95);
+    color: #2c353d;
+    outline: none;
+    transition: border-color 0.15s;
+}
+
+.form-input:focus {
+    border-color: #f26b1d;
+    background: #ffffff;
+}
+
+.pill-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.pill-btn {
+    padding: 7px 15px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #3b444c;
+    background: rgba(246, 248, 251, 0.92);
+    border: 1.5px solid #cfd7df;
+    border-radius: 10px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.14s ease;
+}
+
+.pill-btn:hover {
+    border-color: #adb8c4;
+    background: #ffffff;
+}
+
+.pill-btn.active {
+    border: 2px solid #f26b1d;
+    background: #dce3ec;
+    color: #1f262d;
+    font-weight: 700;
+}
+
+.swatch-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+.swatch-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    background: transparent;
+    padding: 3px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.14s ease;
+}
+
+.swatch-btn:hover {
+    transform: scale(1.08);
+}
+
+.swatch-btn.active {
+    border-color: #f26b1d;
+}
+
+.swatch-color {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    display: block;
+}
+
+/* Creator Bottom Action Buttons (Ref Image 1) */
+.creator-actions-bar {
+    margin-top: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+}
+
+.btn-primary-orange {
+    background: #f56c18;
+    color: #ffffff;
+    font-size: 16px;
+    font-weight: 800;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(245, 108, 24, 0.32);
+    transition: all 0.16s ease;
+}
+
+.btn-primary-orange:hover {
+    background: #e05c0c;
+    transform: translateY(-1px);
+}
+
+.btn-coop-blue {
+    background: #2b6cb0;
+    color: #ffffff;
+    font-size: 15px;
+    font-weight: 700;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(43, 108, 176, 0.25);
+    transition: all 0.16s ease;
+}
+
+.btn-coop-blue:hover {
+    background: #22568f;
+    transform: translateY(-1px);
+}
+
+.btn-secondary-light {
+    background: rgba(247, 249, 251, 0.95);
+    color: #37414a;
+    font-size: 15px;
+    font-weight: 700;
+    padding: 11px 20px;
+    border: 1.5px solid #cbd3dc;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.btn-secondary-light:hover {
+    background: #ffffff;
+    border-color: #9aa5b1;
+}
+
+/* ==========================================================================
+   Campus Roam Floating Banner
+   ========================================================================== */
+#roam-banner {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 22;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 12px 22px;
+    border-radius: 18px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+/* ==========================================================================
+   Race HUD & Countdown Overlay
+   ========================================================================== */
+#race-hud {
+    position: fixed;
+    top: 14px;
+    left: 16px;
+    z-index: 18;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.hud-stats-card {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(8px);
+    padding: 10px 18px;
+    border-radius: 16px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.10);
+}
+
+.hud-stat-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.hud-stat-label {
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #607d8b;
+}
+
+.hud-stat-val {
+    font-size: 18px;
+    font-weight: 800;
+    color: #263238;
+}
+
+.hud-progress-wrap {
+    width: 280px;
+    background: rgba(255, 255, 255, 0.90);
+    padding: 8px 14px;
+    border-radius: 12px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+}
+
+#hud-runners-bar {
+    position: relative;
+    height: 10px;
+    background: #e8a588;
+    border-radius: 6px;
+    margin-top: 4px;
+}
+
+.hud-runner-dot {
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 2px solid #546e7a;
+    transition: left 0.1s linear;
+}
+
+.hud-runner-dot.is-self {
+    width: 16px;
+    height: 16px;
+    background: #f56c18;
+    border: 2.5px solid #ffffff;
+    z-index: 2;
+}
+
+#countdown-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 28;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+
+#countdown-number {
+    font-size: 120px;
+    font-weight: 900;
+    color: #ffffff;
+    text-shadow: 0 8px 28px rgba(242, 107, 29, 0.85), 0 2px 6px rgba(0, 0, 0, 0.45);
+    animation: popScale 0.85s infinite;
+}
+
+@keyframes popScale {
+    0% { transform: scale(0.6); opacity: 0.3; }
+    40% { transform: scale(1.12); opacity: 1; }
+    100% { transform: scale(0.95); opacity: 0.9; }
+}
+
+.race-toast {
+    position: fixed;
+    top: 86px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-20px);
+    z-index: 26;
+    padding: 10px 24px;
+    border-radius: 99px;
+    font-size: 17px;
+    font-weight: 800;
+    color: #ffffff;
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.25s ease;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+}
+
+.race-toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+.race-toast.boost {
+    background: linear-gradient(90deg, #ff6b35, #f7b731);
+}
+
+.race-toast.recover {
+    background: linear-gradient(90deg, #26de81, #20bf6b);
+}
+
+/* ==========================================================================
+   Math Question Modal (Direct Input -> 2nd Wrong Triggers 4 Options)
+   ========================================================================== */
+#quiz-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 25;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding-bottom: 24px;
+    pointer-events: none;
+}
+
+.quiz-card {
+    pointer-events: auto;
+    width: 94%;
+    max-width: 520px;
+    background: rgba(255, 255, 255, 0.97);
+    backdrop-filter: blur(12px);
+    border-radius: 24px;
+    padding: 20px 24px;
+    box-shadow: 0 14px 40px rgba(0, 0, 0, 0.22);
+    border: 2px solid #f26b1d;
+    animation: slideUp 0.22s ease-out;
+}
+
+@keyframes slideUp {
+    from { transform: translateY(30px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.quiz-top-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.quiz-badge {
+    font-size: 13px;
+    font-weight: 800;
+    padding: 4px 12px;
+    border-radius: 99px;
+    background: #eceff1;
+    color: #37474f;
+}
+
+#quiz-type-badge {
+    color: #ffffff;
+}
+
+#quiz-expression {
+    font-size: 36px;
+    font-weight: 900;
+    text-align: center;
+    color: #1e272e;
+    margin: 8px 0;
+    letter-spacing: 1px;
+    font-family: "Consolas", "Monaco", "Microsoft JhengHei", monospace;
+}
+
+.quiz-feedback {
+    text-align: center;
+    font-size: 14px;
+    font-weight: 700;
+    padding: 6px 10px;
+    border-radius: 10px;
+    margin-bottom: 8px;
+}
+
+.quiz-feedback.info {
+    background: #e3f2fd;
+    color: #1565c0;
+}
+
+.quiz-feedback.warn {
+    background: #fff8e1;
+    color: #ef6c00;
+}
+
+.quiz-feedback.error {
+    background: #ffebee;
+    color: #c62828;
+}
+
+#quiz-hint-box {
+    background: #fffde7;
+    border-left: 4px solid #fbc02d;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    line-height: 1.45;
+    color: #5d4037;
+    margin-bottom: 10px;
+    white-space: pre-line;
+}
+
+.quiz-input-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+#quiz-answer-input {
+    flex: 1;
+    font-size: 24px;
+    font-weight: 800;
+    text-align: center;
+    padding: 8px 14px;
+    border: 2px solid #b0bec5;
+    border-radius: 12px;
+    outline: none;
+}
+
+#quiz-answer-input:focus {
+    border-color: #f26b1d;
+}
+
+#btn-submit-answer {
+    background: #f56c18;
+    color: #ffffff;
+    font-size: 17px;
+    font-weight: 800;
+    padding: 0 24px;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+}
+
+#btn-submit-answer:hover {
+    background: #e05c0c;
+}
+
+/* On-Screen Numeric Keypad */
+.quiz-keypad {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 6px;
+}
+
+.keypad-btn {
+    padding: 9px 0;
+    font-size: 16px;
+    font-weight: 800;
+    border: 1.5px solid #cfd8dc;
+    border-radius: 10px;
+    background: #f8fafc;
+    color: #263238;
+    cursor: pointer;
+    transition: background 0.12s;
+}
+
+.keypad-btn:hover {
+    background: #edf2f7;
+}
+
+.keypad-btn.key-sign {
+    background: #fff3e0;
+    border-color: #ffb74d;
+    color: #e65100;
+}
+
+/* 4-Option Fallback Grid (After 2 Wrong Direct Inputs) */
+.quiz-options-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-top: 6px;
+}
+
+.quiz-option-btn {
+    padding: 14px;
+    font-size: 24px;
+    font-weight: 800;
+    border: 2px solid #cbd5e0;
+    border-radius: 14px;
+    background: #f8fafc;
+    color: #1e293b;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.quiz-option-btn:hover:not(:disabled) {
+    border-color: #f26b1d;
+    background: #fff5f0;
+}
+
+.quiz-option-btn.wrong {
+    background: #fee2e2;
+    border-color: #ef4444;
+    color: #991b1b;
+    opacity: 0.65;
+}
+
+.quiz-option-btn.correct {
+    background: #dcfce7;
+    border-color: #22c55e;
+    color: #166534;
+}
+
+/* ==========================================================================
+   Multiplayer Lobby Modal
+   ========================================================================== */
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 35;
+    background: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+}
+
+.lobby-card {
+    width: 100%;
+    max-width: 580px;
+    background: #ffffff;
+    border-radius: 24px;
+    padding: 26px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+}
+
+.lobby-title {
+    font-size: 22px;
+    font-weight: 800;
+    margin-bottom: 6px;
+}
+
+.lobby-subtitle {
+    font-size: 13.5px;
+    color: #64748b;
+    margin-bottom: 16px;
+}
+
+.lobby-actions-split {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+
+.join-box {
+    display: flex;
+    gap: 8px;
+    flex: 1;
+}
+
+#join-room-input {
+    width: 130px;
+    font-size: 18px;
+    font-weight: 800;
+    text-align: center;
+    letter-spacing: 3px;
+    border: 2px solid #cbd5e1;
+    border-radius: 10px;
+    padding: 8px;
+}
+
+.room-info-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    background: #f8fafc;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 14px 18px;
+    margin-bottom: 14px;
+}
+
+.room-code-huge {
+    font-size: 36px;
+    font-weight: 900;
+    color: #f56c18;
+    letter-spacing: 4px;
+}
+
+#room-qr-box {
+    background: #ffffff;
+    padding: 6px;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+}
+
+.lobby-slots-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin: 12px 0 18px;
+}
+
+.lobby-slot-card {
+    padding: 12px 14px;
+    border-radius: 12px;
+    border: 1.5px solid #e2e8f0;
+    background: #f8fafc;
+}
+
+.lobby-slot-card.is-human {
+    border-color: #f56c18;
+    background: #fff7ed;
+}
+
+.slot-lane-tag {
+    font-size: 12px;
+    font-weight: 700;
+    color: #64748b;
+}
+
+.slot-player-name {
+    font-size: 17px;
+    font-weight: 800;
+    color: #1e293b;
+    margin: 2px 0;
+}
+
+.slot-player-type {
+    font-size: 12px;
+    font-weight: 600;
+    color: #ea580c;
+}
+
+.lobby-status {
+    font-size: 13.5px;
+    font-weight: 700;
+    padding: 8px 12px;
+    border-radius: 10px;
+    margin-bottom: 12px;
+}
+
+.lobby-status.info { background: #e0f2fe; color: #0369a1; }
+.lobby-status.success { background: #dcfce7; color: #15803d; }
+.lobby-status.error { background: #fee2e2; color: #b91c1c; }
+
+/* ==========================================================================
+   Final Results Leaderboard Modal (Matches Reference Image 4)
+   ========================================================================== */
+.results-card {
+    width: 100%;
+    max-width: 480px;
+    background: #fdfdfb;
+    border-radius: 26px;
+    padding: 30px 32px 28px;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.20);
+    text-align: center;
+}
+
+.medal-icon-wrap {
+    margin-bottom: 10px;
+}
+
+#results-rank-title {
+    font-size: 23px;
+    font-weight: 800;
+    color: #212529;
+    margin-bottom: 8px;
+}
+
+#results-summary-sub {
+    font-size: 16px;
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 22px;
+}
+
+.results-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 24px;
+}
+
+.result-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 18px;
+    border-radius: 12px;
+    font-size: 18px;
+    color: #343a40;
+}
+
+.result-row.is-self {
+    background: #f5dfd3;
+    font-weight: 800;
+    color: #1f2428;
+}
+
+.results-btn-row {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+}
+
+.btn-result-action {
+    padding: 11px 24px;
+    font-size: 16px;
+    font-weight: 700;
+    color: #2c353d;
+    background: #f8f9fa;
+    border: 1.5px solid #ced4da;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.btn-result-action:hover {
+    background: #e9ecef;
+    border-color: #adb5bd;
+}
+
+@media (max-width: 680px) {
+    .creator-body {
+        flex-direction: column;
+        align-items: center;
+    }
+    .creator-preview-card {
+        position: static;
+        width: 100%;
+        max-width: 260px;
+    }
+    #top-env-bar {
+        top: auto;
+        bottom: 8px;
+        right: 8px;
+        left: 8px;
+        justify-content: center;
+    }
+}

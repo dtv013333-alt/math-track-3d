@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>3D 正負數加減法操場賽跑｜Three.js 校園競速遊戲</title>
+    <link rel="stylesheet" href="./css/style.css" />
+
+    <!-- Three.js & GLTFLoader -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <!-- PeerJS for Cross-Device WebRTC Multiplayer & QRCode.js -->
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+
+    <!-- 3D Main Campus & Oval Track Canvas -->
+    <div id="world-canvas-container"></div>
+
+    <!-- 3D Projected Runner Floating Name Badges (Ref Images 2 & 3) -->
+    <div id="floating-labels-layer"></div>
+
+    <!-- Top Right Weather Switcher & Camera Controls -->
+    <div id="top-env-bar">
+        <span id="weather-live-label" class="weather-live-tag">偵測天氣中...</span>
+        <button type="button" class="weather-btn active" data-weather="clear_clouds">🌤️ 藍天白雲</button>
+        <button type="button" class="weather-btn" data-weather="sunny">☀️ 艷陽高照</button>
+        <button type="button" class="weather-btn" data-weather="overcast">☁️ 陰天</button>
+        <button type="button" class="weather-btn" data-weather="rainy">🌧️ 下雨天</button>
+        <button type="button" id="btn-toggle-camera" class="env-tool-btn">🎥 視角：背後跟隨</button>
+        <button type="button" id="btn-toggle-sound" class="env-tool-btn">🔊 音效：開</button>
+    </div>
+
+    <!-- ===================================================================
+         1. Character Creation Screen (Matches Reference Image 1)
+         =================================================================== -->
+    <div id="creator-overlay">
+        <div class="creator-container">
+            <div class="creator-header-title">
+                建立你的角色，和三位對手（柯老師・阿維老師・Lisa）一起逛校園賽跑
+            </div>
+
+            <div class="creator-body">
+                <!-- Left 3D Preview Card -->
+                <div class="creator-preview-card">
+                    <div class="preview-name-banner">
+                        <span id="preview-nickname-text">訪客42</span>
+                    </div>
+                    <div id="char-preview-canvas-wrap" title="左右拖曳可旋轉預覽角色"></div>
+                    <div class="preview-drag-tip">↔ 可左右拖曳旋轉預覽 (.glb 骨骼模型)</div>
+                </div>
+
+                <!-- Right Customization Options -->
+                <div class="creator-form-col">
+                    <div class="form-group">
+                        <label class="form-label" for="input-nickname">暱稱（最多 8 字）</label>
+                        <input id="input-nickname" class="form-input" type="text" maxlength="8" value="訪客42" />
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">性別</label>
+                        <div id="group-gender" class="pill-group"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">膚色</label>
+                        <div id="group-skin" class="swatch-group"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">眼睛顏色</label>
+                        <div id="group-eye" class="swatch-group"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">髮色</label>
+                        <div id="group-hair-color" class="swatch-group"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">髮型</label>
+                        <div id="group-hair-style" class="pill-group"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">上衣顏色</label>
+                        <div id="group-top-color" class="swatch-group"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">下身</label>
+                        <div id="group-bottom-style" class="pill-group"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">下身顏色</label>
+                        <div id="group-bottom-color" class="swatch-group"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">配件</label>
+                        <div id="group-accessory" class="pill-group"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom Action Buttons -->
+            <div class="creator-actions-bar">
+                <button type="button" id="btn-start-single" class="btn-primary-orange">進入校園（與電腦比賽）</button>
+                <button type="button" id="btn-open-multiplayer" class="btn-coop-blue">🌐 與他人聯動（跨載具同場）</button>
+                <button type="button" id="btn-random-look" class="btn-secondary-light">🎲 隨機外觀</button>
+                <button type="button" id="btn-roam-campus" class="btn-secondary-light">先隨意看看</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================================================================
+         2. Campus Preview Roam Bar
+         =================================================================== -->
+    <div id="roam-banner" class="hidden">
+        <span style="font-weight:700; color:#37474f;">🏃 正在預覽 3D 校園操場與四跑道（可切換右上角天氣與視角）</span>
+        <button type="button" id="btn-roam-start-race" class="btn-primary-orange" style="padding:9px 18px; font-size:14px;">🏁 立即開始賽跑</button>
+        <button type="button" id="btn-roam-edit-char" class="btn-secondary-light" style="padding:8px 16px; font-size:14px;">✏️ 修改角色</button>
+    </div>
+
+    <!-- ===================================================================
+         3. Race Live HUD & Countdown
+         =================================================================== -->
+    <div id="race-hud" class="hidden">
+        <div class="hud-stats-card">
+            <div class="hud-stat-item">
+                <span class="hud-stat-label">目前題號</span>
+                <span id="hud-question-count" class="hud-stat-val">1 / 10</span>
+            </div>
+            <div class="hud-stat-item">
+                <span class="hud-stat-label">答對題數</span>
+                <span id="hud-correct-count" class="hud-stat-val">0 / 10</span>
+            </div>
+            <div class="hud-stat-item">
+                <span class="hud-stat-label">比賽用時</span>
+                <span id="hud-timer" class="hud-stat-val">0.0 秒</span>
+            </div>
+        </div>
+        <div class="hud-progress-wrap">
+            <div style="display:flex; justify-content:space-between; font-size:11.5px; font-weight:700; color:#546e7a;">
+                <span>起點</span>
+                <span>4 跑道即時位置（10 題 / 圈）</span>
+                <span>終點 🏁</span>
+            </div>
+            <div id="hud-runners-bar"></div>
+        </div>
+    </div>
+
+    <div id="countdown-overlay" class="hidden">
+        <div id="countdown-number">3</div>
+    </div>
+
+    <div id="race-toast" class="race-toast"></div>
+
+    <!-- ===================================================================
+         4. Positive/Negative Math Question Modal
+            (Attempt 1 & 2 Direct Input -> Attempt 3 Switches to 4 Options)
+         =================================================================== -->
+    <div id="quiz-modal" class="hidden">
+        <div class="quiz-card">
+            <div class="quiz-top-meta">
+                <span id="quiz-progress-badge" class="quiz-badge">第 1 / 10 題</span>
+                <span id="quiz-type-badge" class="quiz-badge">負減負</span>
+            </div>
+
+            <div id="quiz-expression">(-5) - (-3) = ?</div>
+            <div id="quiz-feedback-msg" class="quiz-feedback info">請直接輸入正負數答案（答對可加速衝刺 ⚡）</div>
+            <div id="quiz-hint-box" class="hidden"></div>
+
+            <!-- Stage 1 & 2: Direct Input + Virtual Keypad -->
+            <div id="quiz-input-section">
+                <div class="quiz-input-row">
+                    <input id="quiz-answer-input" type="text" inputmode="text" placeholder="輸入答案 (如 -2)" autocomplete="off" />
+                    <button type="button" id="btn-submit-answer">送出</button>
+                </div>
+
+                <div class="quiz-keypad">
+                    <button type="button" class="keypad-btn key-sign" data-key="sign">± 負號</button>
+                    <button type="button" class="keypad-btn" data-key="1">1</button>
+                    <button type="button" class="keypad-btn" data-key="2">2</button>
+                    <button type="button" class="keypad-btn" data-key="3">3</button>
+                    <button type="button" class="keypad-btn" data-key="4">4</button>
+                    <button type="button" class="keypad-btn" data-key="5">5</button>
+                    <button type="button" class="keypad-btn" data-key="back">⌫ 退格</button>
+                    <button type="button" class="keypad-btn" data-key="6">6</button>
+                    <button type="button" class="keypad-btn" data-key="7">7</button>
+                    <button type="button" class="keypad-btn" data-key="8">8</button>
+                    <button type="button" class="keypad-btn" data-key="9">9</button>
+                    <button type="button" class="keypad-btn" data-key="0">0</button>
+                </div>
+            </div>
+
+            <!-- Stage 3 Fallback (After 2 Wrong Inputs): 4-Option Multiple Choice -->
+            <div id="quiz-options-section" class="hidden">
+                <div id="quiz-options-grid" class="quiz-options-grid"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================================================================
+         5. Cross-Device Multiplayer Room Modal
+         =================================================================== -->
+    <div id="multiplayer-modal" class="modal-backdrop hidden">
+        <div class="lobby-card">
+            <div class="lobby-title">🌐 跨載具多人聯動大廳</div>
+            <div class="lobby-subtitle">
+                可讓另一台平板、手機或電腦輸入 4 碼房號（或掃描 QR Code）加入同一場 4 跑道比賽！若真人未滿 4 人，空跑道將由電腦對手（柯老師・阿維老師・Lisa）自動補齊。
+            </div>
+
+            <div class="lobby-actions-split">
+                <button type="button" id="btn-create-room" class="btn-coop-blue" style="padding:10px 16px; font-size:14px;">➕ 建立新房間</button>
+                <div class="join-box">
+                    <input id="join-room-input" type="text" maxlength="4" placeholder="輸入房號" />
+                    <button type="button" id="btn-join-room" class="btn-primary-orange" style="padding:10px 18px; font-size:14px;">加入房間</button>
+                </div>
+            </div>
+
+            <div id="lobby-status-msg" class="lobby-status info">請選擇建立房間或輸入另一台載具的 4 碼房號</div>
+
+            <div id="host-room-panel" class="hidden">
+                <div class="room-info-banner">
+                    <div>
+                        <div style="font-size:12.5px; font-weight:700; color:#64748b;">房間聯動代碼（4 碼）</div>
+                        <div id="room-code-display" class="room-code-huge">----</div>
+                        <div id="room-share-url" style="font-size:11px; color:#94a3b8; word-break:break-all; max-width:340px;"></div>
+                    </div>
+                    <div id="room-qr-box" title="用另一台手機或平板掃描即可加入"></div>
+                </div>
+
+                <div style="font-size:13.5px; font-weight:800; color:#334155;">目前 4 個跑道選手配置：</div>
+                <div id="lobby-slots-grid" class="lobby-slots-grid"></div>
+
+                <div style="display:flex; gap:10px; justify-content:flex-end;">
+                    <button type="button" id="btn-close-lobby" class="btn-secondary-light">返回角色設定</button>
+                    <button type="button" id="btn-host-start-race" class="btn-primary-orange">🏁 開始聯動比賽</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================================================================
+         6. Final Results & Leaderboard Modal (Matches Reference Image 4)
+         =================================================================== -->
+    <div id="results-modal" class="modal-backdrop hidden">
+        <div class="results-card">
+            <div class="medal-icon-wrap">
+                <!-- Medal SVG matching Reference Image 4 -->
+                <svg width="84" height="92" viewBox="0 0 84 92" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M18 6H34L42 28L28 32L18 6Z" fill="#5C7CFA"/>
+                    <path d="M24 6H32L40 28H32L24 6Z" fill="#EDF2FF"/>
+                    <path d="M66 6H50L42 28L56 32L66 6Z" fill="#FF4D6D"/>
+                    <path d="M60 6H52L44 28H52L60 6Z" fill="#FFF0F3"/>
+                    <circle cx="42" cy="54" r="28" fill="#F59F00"/>
+                    <circle cx="42" cy="54" r="21" fill="#FCC419"/>
+                    <path d="M42 40L45.6 48.2L54.5 49.2L47.8 55.2L49.7 64L42 59.3L34.3 64L36.2 55.2L29.5 49.2L38.4 48.2L42 40Z" fill="#6B3E26"/>
+                </svg>
+            </div>
+
+            <div id="results-rank-title">第 4 名　完賽！下次一定更快！</div>
+            <div id="results-summary-sub">答對 8 / 10 題　用時 74.6 秒</div>
+
+            <div id="results-ranking-list" class="results-list"></div>
+
+            <div class="results-btn-row">
+                <button type="button" id="btn-race-again" class="btn-result-action">再跑一次</button>
+                <button type="button" id="btn-back-campus" class="btn-result-action">回到校園</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Scripts -->
+    <script src="./js/glb-data.js"></script>
+    <script src="./js/sound.js"></script>
+    <script src="./js/math-engine.js"></script>
+    <script src="./js/character-builder.js"></script>
+    <script src="./js/world-scene.js"></script>
+    <script src="./js/multiplayer.js"></script>
+    <script src="./js/main.js"></script>
+</body>
+</html>
