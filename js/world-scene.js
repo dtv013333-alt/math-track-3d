@@ -76,15 +76,84 @@ class WorldScene {
         this.scene.add(this.dirLight);
     }
 
+    createGrassLawnTexture() {
+        const canvas = document.createElement('canvas');
+        canvas.width = 512;
+        canvas.height = 512;
+        const ctx = canvas.getContext('2d');
+
+        // Rich lush green lawn base
+        ctx.fillStyle = '#84c454';
+        ctx.fillRect(0, 0, 512, 512);
+
+        // Subtle organic lawn patches (darker & lighter meadow greens)
+        for (let i = 0; i < 90; i++) {
+            const x = Math.random() * 512;
+            const y = Math.random() * 512;
+            const r = 18 + Math.random() * 42;
+            ctx.fillStyle = i % 2 === 0 ? 'rgba(110, 178, 62, 0.35)' : 'rgba(152, 214, 96, 0.35)';
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Thousands of crisp individual grass blades
+        const bladeColors = ['#68a838', '#76b843', '#94d460', '#5c9930', '#a2df6f'];
+        ctx.lineWidth = 2.2;
+        ctx.lineCap = 'round';
+        for (let i = 0; i < 3200; i++) {
+            const bx = Math.random() * 512;
+            const by = Math.random() * 512;
+            const bh = 5 + Math.random() * 8;
+            const tilt = (Math.random() - 0.5) * 4.5;
+            ctx.strokeStyle = bladeColors[i % bladeColors.length];
+            ctx.beginPath();
+            ctx.moveTo(bx, by);
+            ctx.lineTo(bx + tilt, by - bh);
+            ctx.stroke();
+        }
+
+        const tex = new THREE.CanvasTexture(canvas);
+        tex.wrapS = THREE.RepeatWrapping;
+        tex.wrapT = THREE.RepeatWrapping;
+        tex.repeat.set(38, 38);
+        tex.needsUpdate = true;
+        return tex;
+    }
+
     buildEnvironment() {
-        // Soft pastel campus ground plane (matching Reference Image 2 & 3)
+        // Rich textured green grass lawn across the campus ground
         const groundGeo = new THREE.PlaneGeometry(360, 360);
-        this.groundMat = new THREE.MeshLambertMaterial({ color: '#eef7e6' });
+        const grassTex = this.createGrassLawnTexture();
+        this.groundMat = new THREE.MeshLambertMaterial({
+            map: grassTex,
+            color: '#ffffff'
+        });
         const ground = new THREE.Mesh(groundGeo, this.groundMat);
         ground.rotation.x = -Math.PI * 0.5;
         ground.position.y = -0.05;
         ground.receiveShadow = true;
         this.scene.add(ground);
+
+        // Scatter cute 3D grass tufts around the outer lawn (outside the oval track)
+        const tuftMat1 = new THREE.MeshLambertMaterial({ color: '#68a838' });
+        const tuftMat2 = new THREE.MeshLambertMaterial({ color: '#8bc34a' });
+        const tuftGroup = new THREE.Group();
+        for (let i = 0; i < 95; i++) {
+            const angle = (i / 95) * Math.PI * 2 + (i % 5) * 0.13;
+            const radiusX = 27 + (i % 7) * 5.5;
+            const radiusZ = 48 + (i % 6) * 5.0;
+            const tx = Math.cos(angle) * radiusX;
+            const tz = Math.sin(angle) * radiusZ;
+            const blade = new THREE.Mesh(
+                new THREE.ConeGeometry(0.22, 0.55, 5),
+                i % 2 === 0 ? tuftMat1 : tuftMat2
+            );
+            blade.position.set(tx, 0.22, tz);
+            blade.rotation.y = i;
+            tuftGroup.add(blade);
+        }
+        this.scene.add(tuftGroup);
 
         // Blue semi-circular pond/court area at bottom-right of track (seen in Ref Image 2 & 3)
         const blueZone = new THREE.Mesh(
@@ -494,10 +563,10 @@ class WorldScene {
     buildCampusBuildingsAndTrees() {
         const campusGroup = new THREE.Group();
 
-        // Low-poly cute trees on the West side (matching Reference Image 2)
+        // Low-poly cute trees placed well outside the oval track (track outer bounds: |x|<=24.5, |z|<=45.5)
         const treePositions = [
-            [-30, 14], [-32, 6], [-29, -2], [-34, -12], [-31, -22],
-            [-36, 22], [32, 18], [35, 8], [33, -15]
+            [-33, 18], [-35, 6], [-33, -6], [-36, -18], [-34, -32],
+            [-36, 30], [34, 24], [36, 12], [35, -36]
         ];
         const trunkMat = new THREE.MeshLambertMaterial({ color: '#c8a97e' });
         const foliageMat1 = new THREE.MeshLambertMaterial({ color: '#b8e292' });
@@ -523,29 +592,29 @@ class WorldScene {
             campusGroup.add(tree);
         });
 
-        // School Buildings in the South/East background (matching Reference Image 3)
-        // 1. Main Classroom Building (Cream walls, blue-tinted windows, pitched roof)
+        // School Buildings placed safely beyond the North curve (track North edge is z = -45.4)
+        // 1. Main Classroom Building (Cream walls, blue-tinted windows, pitched roof at z = -66)
         const mainBldg = this.createSchoolBuilding(28, 14, 12, '#e6e2cf', '#6eb5c0', '#c83e37');
-        mainBldg.position.set(-4, 0, -48);
+        mainBldg.position.set(-2, 0, -66);
         campusGroup.add(mainBldg);
 
-        // 2. Science & Computer Building (Greyish-blue facade on the left)
+        // 2. Science & Computer Building (Greyish-blue facade on the North-West at x = -32, z = -64)
         const sciBldg = this.createSchoolBuilding(16, 12, 10, '#c5c9c7', '#4a7c9b', '#8d99ae');
-        sciBldg.position.set(-28, 0, -46);
+        sciBldg.position.set(-32, 0, -64);
         campusGroup.add(sciBldg);
 
-        // 3. Covered Walkway & Basketball Court Pavilion (Right side in Ref Image 3)
+        // 3. Covered Walkway & Basketball Court Pavilion (Placed safely East of track at x = 42)
         const pavilion = new THREE.Group();
         const roofMat = new THREE.MeshLambertMaterial({ color: '#5c7672' });
         const pillarMat = new THREE.MeshLambertMaterial({ color: '#78909c' });
         const roof = new THREE.Mesh(new THREE.BoxGeometry(18, 0.6, 28), roofMat);
-        roof.position.set(36, 8.5, -18);
+        roof.position.set(42, 8.5, -16);
         pavilion.add(roof);
 
-        for (let z = -30; z <= -6; z += 8) {
+        for (let z = -28; z <= -4; z += 8) {
             [-7.5, 7.5].forEach((dx) => {
                 const col = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 8.5, 10), pillarMat);
-                col.position.set(36 + dx, 4.25, z);
+                col.position.set(42 + dx, 4.25, z);
                 pavilion.add(col);
             });
         }
@@ -555,18 +624,18 @@ class WorldScene {
             new THREE.MeshLambertMaterial({ color: '#2e8b57' })
         );
         courtFloor.rotation.x = -Math.PI * 0.5;
-        courtFloor.position.set(36, 0.02, -18);
+        courtFloor.position.set(42, 0.02, -16);
         pavilion.add(courtFloor);
         campusGroup.add(pavilion);
 
-        // Floating Campus Landmark Sprites (like Reference Image 3)
+        // Floating Campus Landmark Sprites aligned with the buildings
         const landmarks = [
-            { code: '05', title: '自然・電腦教室', x: -28, y: 16.5, z: -46, color: '#ef9a9a' },
-            { code: '13', title: '運動場', x: -20, y: 12.0, z: -36, color: '#ffcc80' },
-            { code: '04', title: '中高年級教室', x: -4, y: 17.5, z: -48, color: '#ce93d8' },
-            { code: '06', title: '低年級教室', x: 0, y: 14.5, z: -46, color: '#90caf9' },
-            { code: '08', title: '活動室', x: 24, y: 13.5, z: -36, color: '#a5d6a7' },
-            { code: '02', title: '穿堂', x: 30, y: 10.5, z: -24, color: '#80cbc4' }
+            { code: '05', title: '自然・電腦教室', x: -32, y: 16.5, z: -64, color: '#ef9a9a' },
+            { code: '13', title: '運動場', x: -20, y: 11.5, z: -50, color: '#ffcc80' },
+            { code: '04', title: '中高年級教室', x: -2, y: 18.0, z: -66, color: '#ce93d8' },
+            { code: '06', title: '低年級教室', x: 2, y: 15.0, z: -64, color: '#90caf9' },
+            { code: '08', title: '活動室', x: 28, y: 13.5, z: -54, color: '#a5d6a7' },
+            { code: '02', title: '穿堂', x: 38, y: 11.0, z: -22, color: '#80cbc4' }
         ];
 
         landmarks.forEach((lm) => {

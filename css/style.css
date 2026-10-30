@@ -66,31 +66,68 @@ body, html {
     background: rgba(246, 247, 249, 0.97);
 }
 
-/* Top Right Weather & Camera Controls Bar */
+/* Top Right Weather & Camera Controls Bar (Compact Collapsible Popover) */
 #top-env-bar {
     position: fixed;
-    top: 14px;
-    right: 16px;
+    top: 10px;
+    right: 12px;
     z-index: 30;
     display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+    pointer-events: none;
+}
+
+.env-toggle-btn {
+    pointer-events: auto;
+    background: rgba(255, 255, 255, 0.94);
+    backdrop-filter: blur(8px);
+    border: 1.5px solid #cfd8e3;
+    color: #2c3e50;
+    font-size: 13px;
+    font-weight: 800;
+    padding: 7px 14px;
+    border-radius: 99px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.10);
+    transition: all 0.15s ease;
+}
+
+.env-toggle-btn:hover {
+    border-color: #f26b1d;
+    background: #ffffff;
+}
+
+.env-bar-items {
+    pointer-events: auto;
+    display: none;
     flex-wrap: wrap;
     align-items: center;
-    gap: 8px;
-    background: rgba(255, 255, 255, 0.90);
-    backdrop-filter: blur(8px);
-    padding: 7px 12px;
+    justify-content: flex-end;
+    gap: 7px;
+    max-width: 340px;
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(10px);
+    padding: 10px 12px;
     border-radius: 16px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.10);
-    border: 1px solid rgba(255, 255, 255, 0.8);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    border: 1.5px solid #e2e8f0;
+}
+
+.env-bar-items.open {
+    display: flex;
 }
 
 .weather-live-tag {
+    width: 100%;
+    text-align: center;
     font-size: 12px;
     font-weight: 700;
     color: #455a64;
     background: #e3f2fd;
     padding: 4px 10px;
-    border-radius: 10px;
+    border-radius: 8px;
 }
 
 .weather-btn, .env-tool-btn {
@@ -520,28 +557,43 @@ body, html {
     background: linear-gradient(90deg, #26de81, #20bf6b);
 }
 
+.race-toast.fall {
+    background: linear-gradient(90deg, #eb3b5a, #fa8231);
+}
+
 /* ==========================================================================
-   Math Question Modal (Direct Input -> 2nd Wrong Triggers 4 Options)
+   Math Question Modal (Side-Aligned + Unobstructed Fall View)
    ========================================================================== */
 #quiz-modal {
     position: fixed;
     inset: 0;
     z-index: 25;
     display: flex;
-    align-items: flex-end;
-    justify-content: center;
-    padding-bottom: 24px;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 58px 22px 20px;
     pointer-events: none;
+    transition: opacity 0.22s ease, transform 0.22s ease;
+}
+
+#quiz-modal.fall-peek-hidden {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transform: translateX(30px);
+}
+
+#quiz-modal.fall-peek-hidden .quiz-card {
+    pointer-events: none !important;
 }
 
 .quiz-card {
     pointer-events: auto;
-    width: 94%;
-    max-width: 520px;
-    background: rgba(255, 255, 255, 0.97);
-    backdrop-filter: blur(12px);
-    border-radius: 24px;
-    padding: 20px 24px;
+    width: 92%;
+    max-width: 410px;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 22px;
+    padding: 16px 20px;
     box-shadow: 0 14px 40px rgba(0, 0, 0, 0.22);
     border: 2px solid #f26b1d;
     animation: slideUp 0.22s ease-out;
@@ -944,11 +996,17 @@ body, html {
         width: 100%;
         max-width: 260px;
     }
-    #top-env-bar {
-        top: auto;
-        bottom: 8px;
-        right: 8px;
-        left: 8px;
+    #quiz-modal {
+        align-items: flex-end;
         justify-content: center;
+        padding: 12px 10px 14px;
+    }
+    .quiz-card {
+        max-width: 100%;
+        padding: 12px 14px;
+    }
+    #quiz-expression {
+        font-size: 26px;
+        margin: 4px 0;
     }
 }

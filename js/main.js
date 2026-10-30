@@ -240,6 +240,24 @@ class MathTrackGame {
     // 3. Weather System UI & Live Sync
     // =========================================================================
     initWeatherUI() {
+        const toggleBtn = document.getElementById('btn-env-menu-toggle');
+        const itemsBox = document.getElementById('env-bar-items');
+        if (toggleBtn && itemsBox) {
+            toggleBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                window.soundManager.playClick();
+                const isOpen = itemsBox.classList.toggle('open');
+                toggleBtn.textContent = isOpen ? '🌤️ 收起設定 ▴' : '🌤️ 天氣・視角・音效 ▾';
+            });
+            document.addEventListener('pointerdown', (e) => {
+                const bar = document.getElementById('top-env-bar');
+                if (bar && !bar.contains(e.target) && itemsBox.classList.contains('open')) {
+                    itemsBox.classList.remove('open');
+                    toggleBtn.textContent = '🌤️ 天氣・視角・音效 ▾';
+                }
+            });
+        }
+
         const weatherButtons = document.querySelectorAll('.weather-btn');
         const setWeatherUI = (mode) => {
             weatherButtons.forEach((btn) => {
@@ -598,37 +616,61 @@ class MathTrackGame {
             this.submitDirectAnswer();
         });
 
-        answerInput.addEventListener('keydown', (e) => {
+        // Apply a virtual or physical key input without focusing the input element
+        // (prevents mobile/tablet OS virtual keyboard from ever popping up!)
+        const applyKeyInput = (key) => {
+            if (!this.isQuizOpen || this.quizMode !== 'INPUT') return;
+            let cur = answerInput.value.trim();
+
+            if (key === 'clear') {
+                answerInput.value = '';
+            } else if (key === 'back') {
+                answerInput.value = cur.slice(0, -1);
+            } else if (key === 'sign') {
+                if (cur.startsWith('-')) {
+                    answerInput.value = cur.slice(1);
+                } else {
+                    answerInput.value = '-' + cur;
+                }
+            } else {
+                if (cur.replace('-', '').length < 4) {
+                    answerInput.value = cur + key;
+                }
+            }
+        };
+
+        // Global physical keyboard listener for desktop convenience (no input focus needed)
+        window.addEventListener('keydown', (e) => {
+            if (!this.isQuizOpen || this.quizMode !== 'INPUT') return;
             if (e.key === 'Enter') {
                 e.preventDefault();
                 this.submitDirectAnswer();
+            } else if (e.key === 'Backspace') {
+                e.preventDefault();
+                window.soundManager.playClick();
+                applyKeyInput('back');
+            } else if (e.key === 'Escape' || e.key === 'Delete') {
+                e.preventDefault();
+                window.soundManager.playClick();
+                applyKeyInput('clear');
+            } else if (e.key === '-') {
+                e.preventDefault();
+                window.soundManager.playClick();
+                applyKeyInput('sign');
+            } else if (/^[0-9]$/.test(e.key)) {
+                e.preventDefault();
+                window.soundManager.playClick();
+                applyKeyInput(e.key);
             }
         });
 
         // Virtual Keypad buttons (for touch / tablet / mouse convenience)
         document.querySelectorAll('.keypad-btn').forEach((btn) => {
-            btn.addEventListener('click', () => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
                 if (!this.isQuizOpen || this.quizMode !== 'INPUT') return;
                 window.soundManager.playClick();
-                const key = btn.dataset.key;
-                let cur = answerInput.value.trim();
-
-                if (key === 'clear') {
-                    answerInput.value = '';
-                } else if (key === 'back') {
-                    answerInput.value = cur.slice(0, -1);
-                } else if (key === 'sign') {
-                    if (cur.startsWith('-')) {
-                        answerInput.value = cur.slice(1);
-                    } else {
-                        answerInput.value = '-' + cur;
-                    }
-                } else {
-                    if (cur.replace('-', '').length < 4) {
-                        answerInput.value = cur + key;
-                    }
-                }
-                answerInput.focus();
+                applyKeyInput(btn.dataset.key);
             });
         });
     }
@@ -672,9 +714,40 @@ class MathTrackGame {
         inputSection.classList.remove('hidden');
         optionsSection.classList.add('hidden');
         answerInput.value = '';
+        modal.classList.remove('fall-peek-hidden');
         modal.classList.remove('hidden');
+    }
 
-        setTimeout(() => answerInput.focus(), 60);
+    // Temporarily hide the quiz card & focus camera on the runner falling on the track
+    playFallShowcase(afterCallback) {
+        const modal = document.getElementById('quiz-modal');
+        if (this.localRunner) {
+            // Reset and replay Fall animation clearly
+            if (this.localRunner.charCtrl.actions['Fall']) {
+                this.localRunner.charCtrl.actions['Fall'].reset().play();
+                this.localRunner.charCtrl.currentActionName = 'Fall';
+            } else {
+                this.localRunner.charCtrl.playAnimation('Fall', 0.08);
+            }
+            this.localRunner.charCtrl.setDizzyEffect(true);
+            this.localRunner.fallTimer = 1.6;
+            this.syncLocalRunner();
+        }
+
+        this.fallCameraTimer = 1.55;
+        this.showFloatingToast('💥 答錯跌倒了！', 'fall');
+
+        if (modal) {
+            modal.classList.add('fall-peek-hidden');
+        }
+
+        clearTimeout(this.fallPeekTimeout);
+        this.fallPeekTimeout = setTimeout(() => {
+            if (modal && this.isQuizOpen) {
+                modal.classList.remove('fall-peek-hidden');
+            }
+            if (afterCallback) afterCallback();
+        }, 1450);
     }
 
     submitDirectAnswer() {
@@ -696,30 +769,24 @@ class MathTrackGame {
             // Correct in Direct Input stage!
             this.handleQuestionCorrect(true);
         } else {
-            // Wrong answer -> Runner falls down!
+            // Wrong answer -> Runner falls down with unobstructed camera view!
             this.wrongAttemptCount++;
             window.soundManager.playWrongFall();
-
-            if (this.localRunner) {
-                this.localRunner.charCtrl.playAnimation('Fall', 0.12);
-                this.localRunner.charCtrl.setDizzyEffect(true);
-                this.localRunner.fallTimer = 1.3;
-                this.syncLocalRunner();
-            }
 
             const feedbackEl = document.getElementById('quiz-feedback-msg');
             const hintEl = document.getElementById('quiz-hint-box');
             hintEl.classList.remove('hidden');
 
             if (this.wrongAttemptCount === 1) {
-                // First wrong attempt: prompt to try direct input one more time
+                // First wrong attempt: show fall animation first, then prompt for 2nd input
                 feedbackEl.textContent = `❌「${raw}」不對喔，角色跌倒了！請再輸入一次試試看（第 2 次機會）`;
                 feedbackEl.className = 'quiz-feedback error';
                 answerInput.value = '';
-                answerInput.focus();
+                this.playFallShowcase();
             } else {
-                // Second wrong attempt: switch to 4-Option Fallback Mode!
+                // Second wrong attempt: show fall animation first, then switch to 4-Option Fallback Mode!
                 this.switchToFourOptionsMode(q, raw);
+                this.playFallShowcase();
             }
         }
     }
@@ -1063,17 +1130,44 @@ class MathTrackGame {
         const targetRunner = this.localRunner || this.runners[0];
         if (!targetRunner) return;
 
+        if (this.fallCameraTimer > 0) {
+            this.fallCameraTimer = Math.max(0, this.fallCameraTimer - dt);
+        }
+
         const charPos = targetRunner.charCtrl.group.position;
         const heading = targetRunner.charCtrl.group.rotation.y;
 
-        // Forward unit vector along runner's heading
+        // Forward unit vector (fx, fz) and Right unit vector (rx, rz) relative to runner
         const fx = Math.sin(heading);
         const fz = Math.cos(heading);
+        const rx = -fz;
+        const rz = fx;
 
         let desiredCamPos;
         let lookAtPos;
 
-        if (this.cameraViewMode === 'FRONT' || this.state === 'FINISHED') {
+        if (this.fallCameraTimer > 0) {
+            // Close-up 3/4 front-side showcase view when the character stumbles and falls!
+            desiredCamPos = new THREE.Vector3(
+                charPos.x + fx * 3.8 + rx * 2.6,
+                charPos.y + 2.2,
+                charPos.z + fz * 3.8 + rz * 2.6
+            );
+            lookAtPos = new THREE.Vector3(charPos.x, charPos.y + 0.65, charPos.z);
+        } else if (this.isQuizOpen && window.innerWidth > 680) {
+            // While answering a question on desktop/tablet: place character on the LEFT half of the screen
+            // so the right-aligned Quiz Card never covers the character or their fallen pose!
+            desiredCamPos = new THREE.Vector3(
+                charPos.x + fx * 4.8 + rx * 2.2,
+                charPos.y + 2.6,
+                charPos.z + fz * 4.8 + rz * 2.2
+            );
+            lookAtPos = new THREE.Vector3(
+                charPos.x - rx * 1.35,
+                charPos.y + 0.85,
+                charPos.z - rz * 1.35
+            );
+        } else if (this.cameraViewMode === 'FRONT' || this.state === 'FINISHED') {
             // Front Campus View (like Reference Image 3: looking at the front of the character with campus buildings behind)
             desiredCamPos = new THREE.Vector3(
                 charPos.x + fx * 6.8 + 1.2,

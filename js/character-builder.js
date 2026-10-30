@@ -338,14 +338,16 @@ class CharacterBuilder {
         const bottomMat = new THREE.MeshLambertMaterial({ color: cfg.bottomColor });
         const shoeMat = new THREE.MeshLambertMaterial({ color: '#ffffff' });
 
-        // Apply face texture material to HeadMesh inside Head bone
+        // Apply skin material to HeadMesh and attach 3D facial features (eyes, brows, nose, blush, mouth)
+        let faceController = null;
         if (nodes.Head) {
             nodes.Head.traverse((child) => {
                 if (child.isMesh) {
-                    child.material = headMat;
+                    child.material = skinMat;
                     child.castShadow = true;
                 }
             });
+            faceController = this.attachFaceFeatures(nodes.Head, cfg);
         }
 
         if (nodes.Torso) {
@@ -451,6 +453,9 @@ class CharacterBuilder {
             },
             setDizzyEffect(active) {
                 fxGroup.userData.dizzyGroup.visible = active;
+                if (faceController) {
+                    faceController.setDizzy(active);
+                }
             },
             update(dt, elapsed) {
                 mixer.update(dt);
@@ -467,6 +472,132 @@ class CharacterBuilder {
 
         controller.playAnimation('Idle', 0.01);
         return controller;
+    }
+
+    // Build 3D expressive facial features (eyebrows, colored eyes, highlights, blush, nose, smile)
+    // directly on the front (+Z) of Head node (center y=0.36, front z=0.44)
+    attachFaceFeatures(headNode, cfg) {
+        const faceGroup = new THREE.Group();
+        faceGroup.name = 'FaceFeatures3D';
+
+        const browMat = new THREE.MeshBasicMaterial({ color: '#3b2314' });
+        const scleraMat = new THREE.MeshBasicMaterial({ color: '#ffffff' });
+        const irisMat = new THREE.MeshBasicMaterial({ color: cfg.eyeColor || '#4e2a14' });
+        const pupilMat = new THREE.MeshBasicMaterial({ color: '#111111' });
+        const blushMat = new THREE.MeshBasicMaterial({ color: '#ff8a95', transparent: true, opacity: 0.65 });
+        const noseMat = new THREE.MeshLambertMaterial({ color: cfg.skinColor || '#fde2c4' });
+        const mouthMat = new THREE.MeshBasicMaterial({ color: '#e04f44', side: THREE.DoubleSide });
+
+        const normalEyesGroup = new THREE.Group();
+        const dizzyEyesGroup = new THREE.Group();
+        dizzyEyesGroup.visible = false;
+
+        [-1, 1].forEach((side) => {
+            const xEye = side * 0.155;
+
+            // 1. Eyebrow (curved arch above eye)
+            const brow = new THREE.Mesh(
+                new THREE.BoxGeometry(0.11, 0.024, 0.025),
+                browMat
+            );
+            brow.position.set(xEye, 0.48, 0.415);
+            brow.rotation.z = -side * 0.10;
+            brow.rotation.y = side * 0.22;
+            faceGroup.add(brow);
+
+            // 2. Normal Eye (White sclera + Colored iris + Pupil + Sparkle + Upper lash)
+            const eyeUnit = new THREE.Group();
+            eyeUnit.position.set(xEye, 0.365, 0.425);
+            eyeUnit.rotation.y = side * 0.20;
+
+            const sclera = new THREE.Mesh(new THREE.SphereGeometry(0.068, 14, 12), scleraMat);
+            sclera.scale.set(1.05, 1.12, 0.35);
+            eyeUnit.add(sclera);
+
+            const iris = new THREE.Mesh(new THREE.SphereGeometry(0.048, 14, 12), irisMat);
+            iris.scale.set(1.0, 1.08, 0.35);
+            iris.position.set(0, -0.004, 0.012);
+            eyeUnit.add(iris);
+
+            const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.026, 12, 10), pupilMat);
+            pupil.scale.set(1.0, 1.05, 0.35);
+            pupil.position.set(0, -0.004, 0.020);
+            eyeUnit.add(pupil);
+
+            // White eye sparkle highlight
+            const shine1 = new THREE.Mesh(new THREE.SphereGeometry(0.014, 8, 8), scleraMat);
+            shine1.position.set(-0.016, 0.018, 0.026);
+            eyeUnit.add(shine1);
+
+            const shine2 = new THREE.Mesh(new THREE.SphereGeometry(0.008, 8, 8), scleraMat);
+            shine2.position.set(0.016, -0.016, 0.026);
+            eyeUnit.add(shine2);
+
+            // Upper eyelash bar
+            const lash = new THREE.Mesh(new THREE.BoxGeometry(0.125, 0.022, 0.025), browMat);
+            lash.position.set(0, 0.058, 0.012);
+            lash.rotation.z = -side * 0.06;
+            eyeUnit.add(lash);
+
+            normalEyesGroup.add(eyeUnit);
+
+            // 3. Dizzy X-Eye (shown when character falls)
+            const xGroup = new THREE.Group();
+            xGroup.position.set(xEye, 0.365, 0.44);
+            xGroup.rotation.y = side * 0.20;
+            const bar1 = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.024, 0.02), browMat);
+            bar1.rotation.z = Math.PI * 0.25;
+            const bar2 = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.024, 0.02), browMat);
+            bar2.rotation.z = -Math.PI * 0.25;
+            xGroup.add(bar1, bar2);
+            dizzyEyesGroup.add(xGroup);
+
+            // 4. Rosy Cheek Blush
+            const blush = new THREE.Mesh(new THREE.SphereGeometry(0.058, 12, 10), blushMat);
+            blush.scale.set(1.25, 0.72, 0.32);
+            blush.position.set(side * 0.245, 0.285, 0.39);
+            blush.rotation.y = side * 0.38;
+            faceGroup.add(blush);
+        });
+
+        faceGroup.add(normalEyesGroup);
+        faceGroup.add(dizzyEyesGroup);
+
+        // 5. Cute 3D Button Nose
+        const nose = new THREE.Mesh(new THREE.SphereGeometry(0.032, 10, 10), noseMat);
+        nose.scale.set(1.0, 0.85, 1.15);
+        nose.position.set(0, 0.31, 0.455);
+        faceGroup.add(nose);
+
+        // 6. Cute Happy Smile Mouth (half-circle D-shape smile)
+        const smileMouth = new THREE.Mesh(
+            new THREE.CircleGeometry(0.062, 16, Math.PI, Math.PI),
+            mouthMat
+        );
+        smileMouth.position.set(0, 0.245, 0.438);
+        smileMouth.rotation.x = -0.12;
+        faceGroup.add(smileMouth);
+
+        // Surprised O-mouth when dizzy/falling
+        const dizzyMouth = new THREE.Mesh(
+            new THREE.CircleGeometry(0.042, 16),
+            mouthMat
+        );
+        dizzyMouth.position.set(0, 0.22, 0.438);
+        dizzyMouth.rotation.x = -0.12;
+        dizzyMouth.visible = false;
+        faceGroup.add(dizzyMouth);
+
+        headNode.add(faceGroup);
+
+        return {
+            setDizzy(isDizzy) {
+                normalEyesGroup.visible = !isDizzy;
+                smileMouth.visible = !isDizzy;
+                dizzyEyesGroup.visible = Boolean(isDizzy);
+                dizzyMouth.visible = Boolean(isDizzy);
+            }
+        };
     }
 
     attachBottomStyle(torsoNode, legL, legR, style, topMat, bottomMat) {
@@ -529,55 +660,58 @@ class CharacterBuilder {
         const hairGroup = new THREE.Group();
         hairGroup.position.set(0, 0.36, 0);
 
-        // Base scalp cap (for all non-bald styles)
+        // Top crown hair cap tilted toward the back (-Z) so the front face (+Z) is 100% uncovered!
         const capMesh = new THREE.Mesh(
-            new THREE.SphereGeometry(0.485, 20, 16, 0, Math.PI * 2, 0, Math.PI * 0.58),
+            new THREE.SphereGeometry(0.48, 20, 16, 0, Math.PI * 2, 0, Math.PI * 0.42),
             hairMat
         );
-        capMesh.rotation.x = -0.18;
-        capMesh.position.set(0, 0.03, -0.02);
+        capMesh.rotation.x = -0.46;
+        capMesh.position.set(0, 0.04, -0.03);
         hairGroup.add(capMesh);
 
-        // Cute front bangs (瀏海)
-        const bangs = new THREE.Mesh(
-            new THREE.SphereGeometry(0.46, 16, 12, 0, Math.PI, 0, Math.PI * 0.36),
-            hairMat
-        );
-        bangs.rotation.set(0.38, 0, 0);
-        bangs.position.set(0, 0.08, 0.05);
-        hairGroup.add(bangs);
-
-        if (style === 'long') {
-            // Long straight hair down back and sides
-            const backHair = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.44, 0.52, 0.68, 18),
+        // Cute sculpted forehead bangs high above the eyebrows (y = +0.24 in hairGroup => y = 0.60 in headNode)
+        [-0.18, 0, 0.18].forEach((bx, idx) => {
+            const bangPuff = new THREE.Mesh(
+                new THREE.SphereGeometry(idx === 1 ? 0.16 : 0.14, 12, 10),
                 hairMat
             );
-            backHair.position.set(0, -0.22, -0.12);
+            bangPuff.scale.set(1.25, 0.68, 0.72);
+            bangPuff.position.set(bx, 0.24, 0.34);
+            bangPuff.rotation.x = 0.22;
+            hairGroup.add(bangPuff);
+        });
+
+        if (style === 'long') {
+            // Long straight hair down back and sides (behind ears, never blocking front face)
+            const backHair = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.42, 0.50, 0.68, 18),
+                hairMat
+            );
+            backHair.position.set(0, -0.22, -0.15);
             hairGroup.add(backHair);
 
-            [-0.36, 0.36].forEach((xPos) => {
+            [-0.38, 0.38].forEach((xPos) => {
                 const sideLock = new THREE.Mesh(
-                    new THREE.CylinderGeometry(0.13, 0.16, 0.58, 12),
+                    new THREE.CylinderGeometry(0.11, 0.14, 0.58, 12),
                     hairMat
                 );
-                sideLock.position.set(xPos, -0.18, 0.02);
+                sideLock.position.set(xPos, -0.18, -0.02);
                 sideLock.rotation.z = xPos > 0 ? -0.12 : 0.12;
                 hairGroup.add(sideLock);
             });
         } else if (style === 'long_curly') {
             // Voluminous wavy/curly long hair (長捲髮 for 柯老師)
             const backHair = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.45, 0.56, 0.68, 18),
+                new THREE.CylinderGeometry(0.43, 0.54, 0.68, 18),
                 hairMat
             );
-            backHair.position.set(0, -0.22, -0.12);
+            backHair.position.set(0, -0.22, -0.16);
             hairGroup.add(backHair);
 
-            // Curly wave puffs along back and shoulders
+            // Curly wave puffs along back and sides (z <= 0.0 so face is completely clear)
             const curlPositions = [
-                [-0.38, -0.08, 0.04, 0.19], [-0.42, -0.26, 0.02, 0.21], [-0.38, -0.44, -0.02, 0.18],
-                [0.38, -0.08, 0.04, 0.19],  [0.42, -0.26, 0.02, 0.21],  [0.38, -0.44, -0.02, 0.18],
+                [-0.40, -0.08, -0.02, 0.18], [-0.43, -0.26, -0.02, 0.20], [-0.39, -0.44, -0.04, 0.18],
+                [0.40, -0.08, -0.02, 0.18],  [0.43, -0.26, -0.02, 0.20],  [0.39, -0.44, -0.04, 0.18],
                 [-0.24, -0.35, -0.34, 0.22], [0.0, -0.38, -0.38, 0.23], [0.24, -0.35, -0.34, 0.22],
                 [-0.18, -0.52, -0.30, 0.19], [0.18, -0.52, -0.30, 0.19]
             ];
@@ -589,18 +723,18 @@ class CharacterBuilder {
         } else if (style === 'shoulder') {
             // Shoulder-length hair (及肩髮型 for Lisa)
             const shoulderBack = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.45, 0.50, 0.44, 18),
+                new THREE.CylinderGeometry(0.43, 0.48, 0.44, 18),
                 hairMat
             );
-            shoulderBack.position.set(0, -0.12, -0.10);
+            shoulderBack.position.set(0, -0.12, -0.14);
             hairGroup.add(shoulderBack);
 
-            [-0.36, 0.36].forEach((xPos) => {
+            [-0.38, 0.38].forEach((xPos) => {
                 const sideLock = new THREE.Mesh(
-                    new THREE.CylinderGeometry(0.13, 0.15, 0.38, 12),
+                    new THREE.CylinderGeometry(0.11, 0.14, 0.38, 12),
                     hairMat
                 );
-                sideLock.position.set(xPos, -0.10, 0.03);
+                sideLock.position.set(xPos, -0.10, -0.02);
                 hairGroup.add(sideLock);
             });
         } else if (style === 'ponytail') {
@@ -633,11 +767,21 @@ class CharacterBuilder {
             });
         } else if (style === 'bob') {
             const bobBack = new THREE.Mesh(
-                new THREE.SphereGeometry(0.50, 18, 14, 0, Math.PI * 2, 0.2, Math.PI * 0.65),
+                new THREE.CylinderGeometry(0.44, 0.47, 0.36, 18),
                 hairMat
             );
-            bobBack.position.set(0, -0.06, -0.04);
+            bobBack.position.set(0, -0.08, -0.13);
             hairGroup.add(bobBack);
+
+            [-0.38, 0.38].forEach((xPos) => {
+                const sideBob = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.15, 12, 12),
+                    hairMat
+                );
+                sideBob.scale.set(0.75, 1.35, 1.1);
+                sideBob.position.set(xPos, -0.08, -0.02);
+                hairGroup.add(sideBob);
+            });
         } else if (style === 'spiky') {
             const angles = [
                 [0, 0.48, 0.1, 0.2, 0],
@@ -658,18 +802,19 @@ class CharacterBuilder {
             });
         } else if (style === 'cap') {
             const dome = new THREE.Mesh(
-                new THREE.SphereGeometry(0.50, 18, 14, 0, Math.PI * 2, 0, Math.PI * 0.52),
+                new THREE.SphereGeometry(0.49, 18, 14, 0, Math.PI * 2, 0, Math.PI * 0.38),
                 topMat
             );
-            dome.position.set(0, 0.06, 0);
+            dome.rotation.x = -0.18;
+            dome.position.set(0, 0.10, -0.02);
             hairGroup.add(dome);
 
             const visor = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.46, 0.46, 0.05, 18, 1, false, -Math.PI * 0.38, Math.PI * 0.76),
+                new THREE.CylinderGeometry(0.46, 0.46, 0.045, 18, 1, false, -Math.PI * 0.35, Math.PI * 0.70),
                 topMat
             );
-            visor.position.set(0, 0.08, 0.22);
-            visor.rotation.x = 0.15;
+            visor.position.set(0, 0.20, 0.24);
+            visor.rotation.x = 0.12;
             hairGroup.add(visor);
         }
 
