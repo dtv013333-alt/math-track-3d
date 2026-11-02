@@ -329,7 +329,7 @@ class CharacterBuilder {
             LegR: rootNode.getObjectByName('LegR')
         };
 
-        // Materials (skinMat uses subtle self-illumination so head, nose & limbs vividly match the selected skinColor)
+        // Materials (skinMat is shared by Head, Nose, Hands/Arms & Legs so their skin color is 100% identical)
         const skinMat = new THREE.MeshLambertMaterial({
             color: cfg.skinColor,
             emissive: cfg.skinColor,
@@ -340,7 +340,28 @@ class CharacterBuilder {
         const bottomMat = new THREE.MeshLambertMaterial({ color: cfg.bottomColor });
         const shoeMat = new THREE.MeshLambertMaterial({ color: '#ffffff' });
 
-        // Apply smooth ellipsoid geometry + skinMat to HeadMesh and attach 3D facial features
+        // IMPORTANT: In the GLB hierarchy, Head, ArmL, and ArmR are child nodes of Torso!
+        // Only apply topMat to Torso's own mesh (TorsoMesh), NEVER traversing into Head, ArmL, or ArmR!
+        if (nodes.Torso) {
+            nodes.Torso.children.forEach((child) => {
+                if (child.isMesh || child.name === 'TorsoMesh') {
+                    if (child.isMesh) {
+                        child.material = topMat;
+                        child.castShadow = true;
+                    } else {
+                        child.traverse((m) => {
+                            if (m.isMesh) {
+                                m.material = topMat;
+                                m.castShadow = true;
+                            }
+                        });
+                    }
+                }
+            });
+        }
+
+        // Apply smooth ellipsoid geometry + skinMat (exact same material as hands) to HeadMesh
+        // and attach 3D facial features (black brows, white sclera, black pupils, skin nose, red mouth, pink blush)
         let faceController = null;
         if (nodes.Head) {
             const smoothHeadGeo = new THREE.SphereGeometry(1, 32, 24);
@@ -355,15 +376,6 @@ class CharacterBuilder {
                 }
             });
             faceController = this.attachFaceFeatures(nodes.Head, cfg, skinMat);
-        }
-
-        if (nodes.Torso) {
-            nodes.Torso.traverse((child) => {
-                if (child.isMesh) {
-                    child.material = topMat;
-                    child.castShadow = true;
-                }
-            });
         }
 
         [nodes.ArmL, nodes.ArmR].forEach((arm) => {
@@ -705,34 +717,34 @@ class CharacterBuilder {
         hairGroup.add(topCrown);
 
         if (style === 'long') {
-            // Long straight hair covering ONLY the back half (z <= 0) behind the head & neck
+            // Long straight hair covering ONLY the back half (z <= -0.16) behind the head & neck
             const backHair = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.45, 0.52, 0.70, 18, 1, false, Math.PI * 0.52, Math.PI * 0.96),
+                new THREE.CylinderGeometry(0.42, 0.48, 0.68, 18, 1, false, Math.PI * 0.58, Math.PI * 0.84),
                 hairMat
             );
-            backHair.position.set(0, -0.26, -0.06);
+            backHair.position.set(0, -0.26, -0.16);
             hairGroup.add(backHair);
 
             // Solid back panel so long hair has volume from behind
             const backFill = new THREE.Mesh(
-                new THREE.BoxGeometry(0.82, 0.68, 0.18),
+                new THREE.BoxGeometry(0.76, 0.66, 0.18),
                 hairMat
             );
-            backFill.position.set(0, -0.26, -0.34);
+            backFill.position.set(0, -0.26, -0.36);
             hairGroup.add(backFill);
         } else if (style === 'long_curly') {
-            // Voluminous wavy/curly long hair covering ONLY the back of the head (z <= -0.10)
+            // Voluminous wavy/curly long hair covering ONLY the back of the head (z <= -0.16)
             const backHair = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.46, 0.55, 0.70, 18, 1, false, Math.PI * 0.52, Math.PI * 0.96),
+                new THREE.CylinderGeometry(0.43, 0.50, 0.68, 18, 1, false, Math.PI * 0.58, Math.PI * 0.84),
                 hairMat
             );
-            backHair.position.set(0, -0.26, -0.06);
+            backHair.position.set(0, -0.26, -0.16);
             hairGroup.add(backHair);
 
-            // Curly wave puffs strictly on the back and behind shoulders (z <= -0.14)
+            // Curly wave puffs strictly on the back and behind shoulders (z <= -0.22)
             const curlPositions = [
-                [-0.36, -0.12, -0.22, 0.18], [-0.40, -0.30, -0.22, 0.20], [-0.36, -0.48, -0.24, 0.18],
-                [0.36, -0.12, -0.22, 0.18],  [0.40, -0.30, -0.22, 0.20],  [0.36, -0.48, -0.24, 0.18],
+                [-0.34, -0.12, -0.26, 0.17], [-0.38, -0.30, -0.26, 0.19], [-0.34, -0.48, -0.28, 0.17],
+                [0.34, -0.12, -0.26, 0.17],  [0.38, -0.30, -0.26, 0.19],  [0.34, -0.48, -0.28, 0.17],
                 [-0.22, -0.22, -0.38, 0.21], [0.0, -0.25, -0.42, 0.22],   [0.22, -0.22, -0.38, 0.21],
                 [-0.22, -0.42, -0.38, 0.21], [0.0, -0.45, -0.42, 0.22],   [0.22, -0.42, -0.38, 0.21]
             ];
@@ -742,19 +754,19 @@ class CharacterBuilder {
                 hairGroup.add(curl);
             });
         } else if (style === 'shoulder') {
-            // Shoulder-length hair strictly on the back half (z <= 0)
+            // Shoulder-length hair strictly on the back half (z <= -0.16)
             const shoulderBack = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.45, 0.50, 0.48, 18, 1, false, Math.PI * 0.52, Math.PI * 0.96),
+                new THREE.CylinderGeometry(0.42, 0.46, 0.46, 18, 1, false, Math.PI * 0.58, Math.PI * 0.84),
                 hairMat
             );
-            shoulderBack.position.set(0, -0.18, -0.06);
+            shoulderBack.position.set(0, -0.18, -0.16);
             hairGroup.add(shoulderBack);
 
             const backFill = new THREE.Mesh(
-                new THREE.BoxGeometry(0.78, 0.46, 0.16),
+                new THREE.BoxGeometry(0.72, 0.44, 0.16),
                 hairMat
             );
-            backFill.position.set(0, -0.18, -0.32);
+            backFill.position.set(0, -0.18, -0.34);
             hairGroup.add(backFill);
         } else if (style === 'ponytail') {
             const tail = new THREE.Mesh(
@@ -785,12 +797,12 @@ class CharacterBuilder {
                 hairGroup.add(bun);
             });
         } else if (style === 'bob') {
-            // Bob haircut strictly covering the back half (z <= 0)
+            // Bob haircut strictly covering the back half (z <= -0.16)
             const bobBack = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.45, 0.48, 0.38, 18, 1, false, Math.PI * 0.52, Math.PI * 0.96),
+                new THREE.CylinderGeometry(0.42, 0.44, 0.36, 18, 1, false, Math.PI * 0.58, Math.PI * 0.84),
                 hairMat
             );
-            bobBack.position.set(0, -0.14, -0.06);
+            bobBack.position.set(0, -0.14, -0.16);
             hairGroup.add(bobBack);
         } else if (style === 'spiky') {
             const angles = [
@@ -947,10 +959,19 @@ class CharacterBuilder {
         }
 
         if (nodes.Torso) {
-            nodes.Torso.traverse((c) => {
-                if (c.isMesh) {
-                    c.material = bodyMat;
-                    c.scale.set(1.22, 1.05, 1.32);
+            nodes.Torso.children.forEach((c) => {
+                if (c.isMesh || c.name === 'TorsoMesh') {
+                    if (c.isMesh) {
+                        c.material = bodyMat;
+                        c.scale.set(1.22, 1.05, 1.32);
+                    } else {
+                        c.traverse((m) => {
+                            if (m.isMesh) {
+                                m.material = bodyMat;
+                                m.scale.set(1.22, 1.05, 1.32);
+                            }
+                        });
+                    }
                 }
             });
             // Cute duck tail
