@@ -528,30 +528,29 @@ class WorldScene {
         fieldGroup.add(this.soccerBall);
 
         const npcSpecs = [
-            { x: -2.0, z: -2.2, shirt: '#64b5f6', hair: '#5d4037' },
-            { x: 3.2, z: -1.8, shirt: '#ff8a65', hair: '#212121' },
-            { x: 4.0, z: -3.2, shirt: '#81c784', hair: '#3e2723' },
-            { x: -0.5, z: 5.5, shirt: '#f06292', hair: '#4e342e' }
+            { x: -2.0, z: -2.2, shirt: '#64b5f6', hair: '#5d4037', skin: '#fde2c4', hairStyle: 'short', bottomStyle: 'shorts', bottomColor: '#234782' },
+            { x: 3.2, z: -1.8, shirt: '#ff8a65', hair: '#212121', skin: '#f5cfa0', hairStyle: 'bob', bottomStyle: 'skirt', bottomColor: '#2f353b' },
+            { x: 4.0, z: -3.2, shirt: '#81c784', hair: '#3e2723', skin: '#fde2c4', hairStyle: 'ponytail', bottomStyle: 'shorts', bottomColor: '#5d4037' },
+            { x: -0.5, z: 5.5, shirt: '#f06292', hair: '#4e342e', skin: '#f5cfa0', hairStyle: 'long', bottomStyle: 'dress', bottomColor: '#b8332a' }
         ];
 
         npcSpecs.forEach((spec, idx) => {
-            const npc = new THREE.Group();
-            const torso = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.24, 0.28, 0.65, 12),
-                new THREE.MeshLambertMaterial({ color: spec.shirt })
-            );
-            torso.position.y = 0.55;
-            const head = new THREE.Mesh(
-                new THREE.SphereGeometry(0.38, 14, 14),
-                new THREE.MeshLambertMaterial({ color: '#fde2c4' })
-            );
-            head.position.y = 1.15;
-            const hair = new THREE.Mesh(
-                new THREE.SphereGeometry(0.40, 14, 12, 0, Math.PI * 2, 0, Math.PI * 0.55),
-                new THREE.MeshLambertMaterial({ color: spec.hair })
-            );
-            hair.position.y = 1.20;
-            npc.add(torso, head, hair);
+            let npc;
+            if (window.characterBuilder && window.characterBuilder.isLoaded) {
+                const charCtrl = window.characterBuilder.createCharacter({
+                    nickname: `同學${idx + 1}`,
+                    skinColor: spec.skin,
+                    hairColor: spec.hair,
+                    hairStyle: spec.hairStyle,
+                    topColor: spec.shirt,
+                    bottomStyle: spec.bottomStyle,
+                    bottomColor: spec.bottomColor,
+                    accessory: 'none'
+                });
+                npc = charCtrl.group;
+            } else {
+                npc = new THREE.Group();
+            }
             npc.position.set(spec.x, 0, spec.z);
             fieldGroup.add(npc);
             this.soccerNPCs.push({ mesh: npc, baseX: spec.x, baseZ: spec.z, phase: idx * 1.7 });

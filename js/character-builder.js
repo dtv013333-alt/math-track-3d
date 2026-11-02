@@ -329,25 +329,32 @@ class CharacterBuilder {
             LegR: rootNode.getObjectByName('LegR')
         };
 
-        // Materials
-        const skinMat = new THREE.MeshLambertMaterial({ color: cfg.skinColor });
-        const faceTex = this.createFaceTexture(cfg.skinColor, cfg.eyeColor, 'happy');
-        const headMat = new THREE.MeshLambertMaterial({ map: faceTex });
+        // Materials (skinMat uses subtle self-illumination so head, nose & limbs vividly match the selected skinColor)
+        const skinMat = new THREE.MeshLambertMaterial({
+            color: cfg.skinColor,
+            emissive: cfg.skinColor,
+            emissiveIntensity: 0.22
+        });
         const hairMat = new THREE.MeshLambertMaterial({ color: cfg.hairColor });
         const topMat = new THREE.MeshLambertMaterial({ color: cfg.topColor });
         const bottomMat = new THREE.MeshLambertMaterial({ color: cfg.bottomColor });
         const shoeMat = new THREE.MeshLambertMaterial({ color: '#ffffff' });
 
-        // Apply skin material to HeadMesh and attach 3D facial features (eyes, brows, nose, blush, mouth)
+        // Apply smooth ellipsoid geometry + skinMat to HeadMesh and attach 3D facial features
         let faceController = null;
         if (nodes.Head) {
+            const smoothHeadGeo = new THREE.SphereGeometry(1, 32, 24);
+            smoothHeadGeo.scale(0.46, 0.42, 0.44);
+            smoothHeadGeo.translate(0, 0.36, 0);
+
             nodes.Head.traverse((child) => {
                 if (child.isMesh) {
+                    child.geometry = smoothHeadGeo;
                     child.material = skinMat;
                     child.castShadow = true;
                 }
             });
-            faceController = this.attachFaceFeatures(nodes.Head, cfg);
+            faceController = this.attachFaceFeatures(nodes.Head, cfg, skinMat);
         }
 
         if (nodes.Torso) {
@@ -474,19 +481,27 @@ class CharacterBuilder {
         return controller;
     }
 
-    // Build 3D expressive facial features (eyebrows, colored eyes, highlights, blush, nose, smile)
-    // directly on the front (+Z) of Head node (center y=0.36, front z=0.44)
-    attachFaceFeatures(headNode, cfg) {
+    // Build 3D expressive facial features directly on the front (+Z) of Head node:
+    // - 眉毛：黑色 (#111111)
+    // - 眼白：白色 (#ffffff)
+    // - 眼珠：黑色 (#111111)
+    // - 鼻子：與膚色相同 (skinMat)
+    // - 嘴巴：紅色 (#e61e2b)
+    // - 腮紅：粉紅色 (#ff7eb9)
+    attachFaceFeatures(headNode, cfg, skinMat) {
         const faceGroup = new THREE.Group();
         faceGroup.name = 'FaceFeatures3D';
 
-        const browMat = new THREE.MeshBasicMaterial({ color: '#3b2314' });
+        const browMat = new THREE.MeshBasicMaterial({ color: '#111111' });
         const scleraMat = new THREE.MeshBasicMaterial({ color: '#ffffff' });
-        const irisMat = new THREE.MeshBasicMaterial({ color: cfg.eyeColor || '#4e2a14' });
         const pupilMat = new THREE.MeshBasicMaterial({ color: '#111111' });
-        const blushMat = new THREE.MeshBasicMaterial({ color: '#ff8a95', transparent: true, opacity: 0.65 });
-        const noseMat = new THREE.MeshLambertMaterial({ color: cfg.skinColor || '#fde2c4' });
-        const mouthMat = new THREE.MeshBasicMaterial({ color: '#e04f44', side: THREE.DoubleSide });
+        const blushMat = new THREE.MeshBasicMaterial({ color: '#ff7eb9' });
+        const noseMat = skinMat || new THREE.MeshLambertMaterial({
+            color: cfg.skinColor || '#fde2c4',
+            emissive: cfg.skinColor || '#fde2c4',
+            emissiveIntensity: 0.22
+        });
+        const mouthMat = new THREE.MeshBasicMaterial({ color: '#e61e2b', side: THREE.DoubleSide });
 
         const normalEyesGroup = new THREE.Group();
         const dizzyEyesGroup = new THREE.Group();
@@ -495,96 +510,103 @@ class CharacterBuilder {
         [-1, 1].forEach((side) => {
             const xEye = side * 0.155;
 
-            // 1. Eyebrow (curved arch above eye)
-            const brow = new THREE.Mesh(
-                new THREE.BoxGeometry(0.11, 0.024, 0.025),
+            // 1. 眉毛：黑色 (#111111), curved arch cleanly outside forehead surface
+            const browGroup = new THREE.Group();
+            browGroup.position.set(xEye, 0.49, 0.422);
+            browGroup.rotation.y = side * 0.34;
+            browGroup.rotation.x = -0.22;
+            browGroup.rotation.z = -side * 0.08;
+
+            const browArch = new THREE.Mesh(
+                new THREE.TorusGeometry(0.064, 0.015, 10, 16, Math.PI * 0.72),
                 browMat
             );
-            brow.position.set(xEye, 0.48, 0.415);
-            brow.rotation.z = -side * 0.10;
-            brow.rotation.y = side * 0.22;
-            faceGroup.add(brow);
+            browArch.rotation.z = Math.PI * 0.14;
+            browArch.position.set(0, -0.032, 0);
+            browGroup.add(browArch);
+            faceGroup.add(browGroup);
 
-            // 2. Normal Eye (White sclera + Colored iris + Pupil + Sparkle + Upper lash)
+            // 2. 眼睛：白色眼白 (#ffffff) + 黑色眼珠 (#111111)
             const eyeUnit = new THREE.Group();
-            eyeUnit.position.set(xEye, 0.365, 0.425);
-            eyeUnit.rotation.y = side * 0.20;
+            eyeUnit.position.set(xEye, 0.375, 0.428);
+            eyeUnit.rotation.y = side * 0.34;
 
-            const sclera = new THREE.Mesh(new THREE.SphereGeometry(0.068, 14, 12), scleraMat);
-            sclera.scale.set(1.05, 1.12, 0.35);
+            // 白色眼白 (White sclera clearly surrounding the black pupil)
+            const sclera = new THREE.Mesh(new THREE.SphereGeometry(0.076, 18, 14), scleraMat);
+            sclera.scale.set(1.18, 0.96, 0.55);
             eyeUnit.add(sclera);
 
-            const iris = new THREE.Mesh(new THREE.SphereGeometry(0.048, 14, 12), irisMat);
-            iris.scale.set(1.0, 1.08, 0.35);
-            iris.position.set(0, -0.004, 0.012);
-            eyeUnit.add(iris);
-
-            const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.026, 12, 10), pupilMat);
-            pupil.scale.set(1.0, 1.05, 0.35);
-            pupil.position.set(0, -0.004, 0.020);
+            // 黑色眼珠 (Crisp black eyeball centered in front of the white sclera)
+            const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.045, 16, 14), pupilMat);
+            pupil.scale.set(0.96, 1.02, 0.58);
+            pupil.position.set(0, -0.002, 0.024);
             eyeUnit.add(pupil);
 
-            // White eye sparkle highlight
-            const shine1 = new THREE.Mesh(new THREE.SphereGeometry(0.014, 8, 8), scleraMat);
-            shine1.position.set(-0.016, 0.018, 0.026);
-            eyeUnit.add(shine1);
-
-            const shine2 = new THREE.Mesh(new THREE.SphereGeometry(0.008, 8, 8), scleraMat);
-            shine2.position.set(0.016, -0.016, 0.026);
-            eyeUnit.add(shine2);
-
-            // Upper eyelash bar
-            const lash = new THREE.Mesh(new THREE.BoxGeometry(0.125, 0.022, 0.025), browMat);
-            lash.position.set(0, 0.058, 0.012);
-            lash.rotation.z = -side * 0.06;
-            eyeUnit.add(lash);
+            // 眼神白色高光點 (Tiny white sparkle highlight on black eyeball)
+            const shine = new THREE.Mesh(new THREE.SphereGeometry(0.012, 10, 10), scleraMat);
+            shine.position.set(-0.014, 0.014, 0.048);
+            eyeUnit.add(shine);
 
             normalEyesGroup.add(eyeUnit);
 
-            // 3. Dizzy X-Eye (shown when character falls)
+            // 3. 跌倒時的暈眩 X 眼睛 (黑色)
             const xGroup = new THREE.Group();
-            xGroup.position.set(xEye, 0.365, 0.44);
-            xGroup.rotation.y = side * 0.20;
-            const bar1 = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.024, 0.02), browMat);
+            xGroup.position.set(xEye, 0.375, 0.445);
+            xGroup.rotation.y = side * 0.34;
+            const bar1 = new THREE.Mesh(new THREE.BoxGeometry(0.115, 0.024, 0.022), browMat);
             bar1.rotation.z = Math.PI * 0.25;
-            const bar2 = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.024, 0.02), browMat);
+            const bar2 = new THREE.Mesh(new THREE.BoxGeometry(0.115, 0.024, 0.022), browMat);
             bar2.rotation.z = -Math.PI * 0.25;
             xGroup.add(bar1, bar2);
             dizzyEyesGroup.add(xGroup);
 
-            // 4. Rosy Cheek Blush
-            const blush = new THREE.Mesh(new THREE.SphereGeometry(0.058, 12, 10), blushMat);
-            blush.scale.set(1.25, 0.72, 0.32);
-            blush.position.set(side * 0.245, 0.285, 0.39);
-            blush.rotation.y = side * 0.38;
+            // 4. 腮紅：粉紅色 (#ff7eb9), tangent to cheek surface so it never clips
+            const blush = new THREE.Mesh(new THREE.SphereGeometry(0.056, 14, 12), blushMat);
+            blush.scale.set(1.30, 0.75, 0.45);
+            blush.position.set(side * 0.24, 0.295, 0.390);
+            blush.rotation.y = side * 0.54;
+            blush.rotation.x = 0.16;
             faceGroup.add(blush);
         });
 
         faceGroup.add(normalEyesGroup);
         faceGroup.add(dizzyEyesGroup);
 
-        // 5. Cute 3D Button Nose
-        const nose = new THREE.Mesh(new THREE.SphereGeometry(0.032, 10, 10), noseMat);
-        nose.scale.set(1.0, 0.85, 1.15);
-        nose.position.set(0, 0.31, 0.455);
+        // 5. 鼻子：與膚色相同 (skinMat), cute 3D button nose at center of face
+        const nose = new THREE.Mesh(new THREE.SphereGeometry(0.040, 14, 12), noseMat);
+        nose.scale.set(1.08, 0.90, 1.32);
+        nose.position.set(0, 0.318, 0.452);
         faceGroup.add(nose);
 
-        // 6. Cute Happy Smile Mouth (half-circle D-shape smile)
-        const smileMouth = new THREE.Mesh(
-            new THREE.CircleGeometry(0.062, 16, Math.PI, Math.PI),
-            mouthMat
-        );
-        smileMouth.position.set(0, 0.245, 0.438);
-        smileMouth.rotation.x = -0.12;
-        faceGroup.add(smileMouth);
+        // 6. 嘴巴：紅色 (#e61e2b), 3D smiling mouth cleanly outside lower face surface
+        const smileGroup = new THREE.Group();
+        smileGroup.position.set(0, 0.238, 0.434);
+        smileGroup.rotation.x = 0.26;
 
-        // Surprised O-mouth when dizzy/falling
-        const dizzyMouth = new THREE.Mesh(
-            new THREE.CircleGeometry(0.042, 16),
+        // 3D red smile arch + filled red smiling mouth
+        const smileLip = new THREE.Mesh(
+            new THREE.TorusGeometry(0.048, 0.013, 12, 20, Math.PI),
             mouthMat
         );
-        dizzyMouth.position.set(0, 0.22, 0.438);
-        dizzyMouth.rotation.x = -0.12;
+        smileLip.rotation.z = Math.PI;
+        smileGroup.add(smileLip);
+
+        const smileFill = new THREE.Mesh(
+            new THREE.SphereGeometry(0.048, 16, 12, 0, Math.PI * 2, Math.PI * 0.5, Math.PI * 0.5),
+            mouthMat
+        );
+        smileFill.scale.set(1.0, 0.78, 0.45);
+        smileGroup.add(smileFill);
+        faceGroup.add(smileGroup);
+
+        // 跌倒時的紅色驚訝 O 型嘴
+        const dizzyMouth = new THREE.Mesh(
+            new THREE.SphereGeometry(0.040, 14, 12),
+            mouthMat
+        );
+        dizzyMouth.scale.set(1.0, 1.1, 0.45);
+        dizzyMouth.position.set(0, 0.222, 0.436);
+        dizzyMouth.rotation.x = 0.26;
         dizzyMouth.visible = false;
         faceGroup.add(dizzyMouth);
 
@@ -593,7 +615,7 @@ class CharacterBuilder {
         return {
             setDizzy(isDizzy) {
                 normalEyesGroup.visible = !isDizzy;
-                smileMouth.visible = !isDizzy;
+                smileGroup.visible = !isDizzy;
                 dizzyEyesGroup.visible = Boolean(isDizzy);
                 dizzyMouth.visible = Boolean(isDizzy);
             }
@@ -667,16 +689,18 @@ class CharacterBuilder {
 
         // 1. Back hemisphere scalp cap: phiStart = Math.PI, phiLength = Math.PI => strictly z <= 0!
         const backScalp = new THREE.Mesh(
-            new THREE.SphereGeometry(0.475, 20, 14, Math.PI, Math.PI, 0, Math.PI * 0.78),
+            new THREE.SphereGeometry(1, 22, 16, Math.PI, Math.PI, 0, Math.PI * 0.76),
             hairMat
         );
+        backScalp.scale.set(0.474, 0.432, 0.455);
         hairGroup.add(backScalp);
 
-        // 2. Top-only crown cap (thetaLength = Math.PI * 0.24 => strictly at the very top of skull y > 0.34)
+        // 2. Top-only crown cap (thetaLength = Math.PI * 0.22 => strictly at the very top of skull)
         const topCrown = new THREE.Mesh(
-            new THREE.SphereGeometry(0.472, 20, 10, 0, Math.PI * 2, 0, Math.PI * 0.24),
+            new THREE.SphereGeometry(1, 22, 12, 0, Math.PI * 2, 0, Math.PI * 0.22),
             hairMat
         );
+        topCrown.scale.set(0.472, 0.432, 0.452);
         topCrown.position.set(0, 0, -0.04);
         hairGroup.add(topCrown);
 
