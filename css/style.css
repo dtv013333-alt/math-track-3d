@@ -79,6 +79,94 @@ body, html {
     pointer-events: none;
 }
 
+.top-bar-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    pointer-events: none;
+}
+
+.zoom-quick-pill {
+    pointer-events: auto;
+    display: inline-flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.94);
+    backdrop-filter: blur(8px);
+    border: 1.5px solid #cfd8e3;
+    border-radius: 99px;
+    padding: 2px 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.10);
+    gap: 2px;
+}
+
+.zoom-step-btn {
+    border: none;
+    background: transparent;
+    color: #2c3e50;
+    font-size: 12px;
+    font-weight: 900;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.14s ease, transform 0.1s ease;
+}
+
+.zoom-step-btn:hover {
+    background: #edf2f7;
+}
+
+.zoom-step-btn:active {
+    transform: scale(0.92);
+    background: #fff3eb;
+}
+
+.zoom-pct-btn {
+    border: none;
+    background: transparent;
+    color: #2c3e50;
+    font-size: 12.5px;
+    font-weight: 800;
+    padding: 3px 6px;
+    border-radius: 8px;
+    cursor: pointer;
+    min-width: 58px;
+    text-align: center;
+    transition: background 0.14s ease, color 0.14s ease;
+}
+
+.zoom-pct-btn:hover {
+    background: #fff3eb;
+    color: #d9530f;
+}
+
+.env-zoom-slider-row {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 5px 8px 2px;
+    border-top: 1px dashed #e2e8f0;
+    margin-top: 2px;
+}
+
+.env-zoom-label {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: #37474f;
+    white-space: nowrap;
+}
+
+#zoom-range-slider {
+    flex: 1;
+    accent-color: #f26b1d;
+    cursor: pointer;
+}
+
 .env-toggle-btn {
     pointer-events: auto;
     background: rgba(255, 255, 255, 0.94);
@@ -590,6 +678,9 @@ body, html {
     pointer-events: auto;
     width: 92%;
     max-width: 410px;
+    max-height: calc(100vh - 20px);
+    overflow-y: auto;
+    overflow-x: hidden;
     background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(10px);
     border-radius: 22px;
@@ -672,19 +763,30 @@ body, html {
 
 .quiz-input-row {
     display: flex;
-    gap: 10px;
-    margin-bottom: 12px;
+    align-items: stretch;
+    gap: 8px;
+    margin-bottom: 10px;
+    width: 100%;
 }
 
 #quiz-answer-input {
-    flex: 1;
-    font-size: 24px;
+    flex: 1 1 auto;
+    min-width: 0;
+    width: 0;
+    font-size: 22px;
     font-weight: 800;
     text-align: center;
-    padding: 8px 14px;
+    padding: 8px 10px;
     border: 2px solid #b0bec5;
     border-radius: 12px;
     outline: none;
+    background: #ffffff;
+}
+
+#quiz-answer-input::placeholder {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: #90a4ae;
 }
 
 #quiz-answer-input:focus {
@@ -692,18 +794,26 @@ body, html {
 }
 
 #btn-submit-answer {
+    flex-shrink: 0;
+    white-space: nowrap;
     background: #f56c18;
     color: #ffffff;
-    font-size: 17px;
+    font-size: 16px;
     font-weight: 800;
-    padding: 0 24px;
+    padding: 0 18px;
     border: none;
     border-radius: 12px;
     cursor: pointer;
+    box-shadow: 0 4px 10px rgba(245, 108, 24, 0.28);
+    transition: background 0.15s ease, transform 0.1s ease;
 }
 
 #btn-submit-answer:hover {
     background: #e05c0c;
+}
+
+#btn-submit-answer:active {
+    transform: scale(0.96);
 }
 
 /* On-Screen Numeric Keypad */
@@ -733,6 +843,29 @@ body, html {
     background: #fff3e0;
     border-color: #ffb74d;
     color: #e65100;
+}
+
+.btn-quiz-submit-bottom {
+    width: 100%;
+    margin-top: 9px;
+    padding: 11px 16px;
+    font-size: 16.5px;
+    font-weight: 900;
+    color: #ffffff;
+    background: linear-gradient(90deg, #f56c18, #ff8533);
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    box-shadow: 0 5px 14px rgba(245, 108, 24, 0.30);
+    transition: transform 0.12s ease, filter 0.15s ease;
+}
+
+.btn-quiz-submit-bottom:hover {
+    filter: brightness(1.05);
+}
+
+.btn-quiz-submit-bottom:active {
+    transform: scale(0.98);
 }
 
 /* 4-Option Fallback Grid (After 2 Wrong Direct Inputs) */

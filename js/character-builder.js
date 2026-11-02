@@ -657,63 +657,60 @@ class CharacterBuilder {
     attachHairStyle(headNode, style, hairMat, topMat) {
         if (style === 'bald') return;
 
+        // Place hairGroup at the center of HeadMesh (0, 0.36, 0)
+        // Note: Front of face is +Z (z > 0), Back of head is -Z (z < 0).
+        // All hair geometry is strictly restricted to the back of the head (z <= 0)
+        // and the very top crown (y >= 0.28 relative to center), so ZERO hair ever
+        // appears on the face or pokes out at the chin!
         const hairGroup = new THREE.Group();
         hairGroup.position.set(0, 0.36, 0);
 
-        // Top crown hair cap tilted toward the back (-Z) so the front face (+Z) is 100% uncovered!
-        const capMesh = new THREE.Mesh(
-            new THREE.SphereGeometry(0.48, 20, 16, 0, Math.PI * 2, 0, Math.PI * 0.42),
+        // 1. Back hemisphere scalp cap: phiStart = Math.PI, phiLength = Math.PI => strictly z <= 0!
+        const backScalp = new THREE.Mesh(
+            new THREE.SphereGeometry(0.475, 20, 14, Math.PI, Math.PI, 0, Math.PI * 0.78),
             hairMat
         );
-        capMesh.rotation.x = -0.46;
-        capMesh.position.set(0, 0.04, -0.03);
-        hairGroup.add(capMesh);
+        hairGroup.add(backScalp);
 
-        // Cute sculpted forehead bangs high above the eyebrows (y = +0.24 in hairGroup => y = 0.60 in headNode)
-        [-0.18, 0, 0.18].forEach((bx, idx) => {
-            const bangPuff = new THREE.Mesh(
-                new THREE.SphereGeometry(idx === 1 ? 0.16 : 0.14, 12, 10),
-                hairMat
-            );
-            bangPuff.scale.set(1.25, 0.68, 0.72);
-            bangPuff.position.set(bx, 0.24, 0.34);
-            bangPuff.rotation.x = 0.22;
-            hairGroup.add(bangPuff);
-        });
+        // 2. Top-only crown cap (thetaLength = Math.PI * 0.24 => strictly at the very top of skull y > 0.34)
+        const topCrown = new THREE.Mesh(
+            new THREE.SphereGeometry(0.472, 20, 10, 0, Math.PI * 2, 0, Math.PI * 0.24),
+            hairMat
+        );
+        topCrown.position.set(0, 0, -0.04);
+        hairGroup.add(topCrown);
 
         if (style === 'long') {
-            // Long straight hair down back and sides (behind ears, never blocking front face)
+            // Long straight hair covering ONLY the back half (z <= 0) behind the head & neck
             const backHair = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.42, 0.50, 0.68, 18),
+                new THREE.CylinderGeometry(0.45, 0.52, 0.70, 18, 1, false, Math.PI * 0.52, Math.PI * 0.96),
                 hairMat
             );
-            backHair.position.set(0, -0.22, -0.15);
+            backHair.position.set(0, -0.26, -0.06);
             hairGroup.add(backHair);
 
-            [-0.38, 0.38].forEach((xPos) => {
-                const sideLock = new THREE.Mesh(
-                    new THREE.CylinderGeometry(0.11, 0.14, 0.58, 12),
-                    hairMat
-                );
-                sideLock.position.set(xPos, -0.18, -0.02);
-                sideLock.rotation.z = xPos > 0 ? -0.12 : 0.12;
-                hairGroup.add(sideLock);
-            });
+            // Solid back panel so long hair has volume from behind
+            const backFill = new THREE.Mesh(
+                new THREE.BoxGeometry(0.82, 0.68, 0.18),
+                hairMat
+            );
+            backFill.position.set(0, -0.26, -0.34);
+            hairGroup.add(backFill);
         } else if (style === 'long_curly') {
-            // Voluminous wavy/curly long hair (長捲髮 for 柯老師)
+            // Voluminous wavy/curly long hair covering ONLY the back of the head (z <= -0.10)
             const backHair = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.43, 0.54, 0.68, 18),
+                new THREE.CylinderGeometry(0.46, 0.55, 0.70, 18, 1, false, Math.PI * 0.52, Math.PI * 0.96),
                 hairMat
             );
-            backHair.position.set(0, -0.22, -0.16);
+            backHair.position.set(0, -0.26, -0.06);
             hairGroup.add(backHair);
 
-            // Curly wave puffs along back and sides (z <= 0.0 so face is completely clear)
+            // Curly wave puffs strictly on the back and behind shoulders (z <= -0.14)
             const curlPositions = [
-                [-0.40, -0.08, -0.02, 0.18], [-0.43, -0.26, -0.02, 0.20], [-0.39, -0.44, -0.04, 0.18],
-                [0.40, -0.08, -0.02, 0.18],  [0.43, -0.26, -0.02, 0.20],  [0.39, -0.44, -0.04, 0.18],
-                [-0.24, -0.35, -0.34, 0.22], [0.0, -0.38, -0.38, 0.23], [0.24, -0.35, -0.34, 0.22],
-                [-0.18, -0.52, -0.30, 0.19], [0.18, -0.52, -0.30, 0.19]
+                [-0.36, -0.12, -0.22, 0.18], [-0.40, -0.30, -0.22, 0.20], [-0.36, -0.48, -0.24, 0.18],
+                [0.36, -0.12, -0.22, 0.18],  [0.40, -0.30, -0.22, 0.20],  [0.36, -0.48, -0.24, 0.18],
+                [-0.22, -0.22, -0.38, 0.21], [0.0, -0.25, -0.42, 0.22],   [0.22, -0.22, -0.38, 0.21],
+                [-0.22, -0.42, -0.38, 0.21], [0.0, -0.45, -0.42, 0.22],   [0.22, -0.42, -0.38, 0.21]
             ];
             curlPositions.forEach(([cx, cy, cz, r]) => {
                 const curl = new THREE.Mesh(new THREE.SphereGeometry(r, 12, 12), hairMat);
@@ -721,75 +718,64 @@ class CharacterBuilder {
                 hairGroup.add(curl);
             });
         } else if (style === 'shoulder') {
-            // Shoulder-length hair (及肩髮型 for Lisa)
+            // Shoulder-length hair strictly on the back half (z <= 0)
             const shoulderBack = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.43, 0.48, 0.44, 18),
+                new THREE.CylinderGeometry(0.45, 0.50, 0.48, 18, 1, false, Math.PI * 0.52, Math.PI * 0.96),
                 hairMat
             );
-            shoulderBack.position.set(0, -0.12, -0.14);
+            shoulderBack.position.set(0, -0.18, -0.06);
             hairGroup.add(shoulderBack);
 
-            [-0.38, 0.38].forEach((xPos) => {
-                const sideLock = new THREE.Mesh(
-                    new THREE.CylinderGeometry(0.11, 0.14, 0.38, 12),
-                    hairMat
-                );
-                sideLock.position.set(xPos, -0.10, -0.02);
-                hairGroup.add(sideLock);
-            });
+            const backFill = new THREE.Mesh(
+                new THREE.BoxGeometry(0.78, 0.46, 0.16),
+                hairMat
+            );
+            backFill.position.set(0, -0.18, -0.32);
+            hairGroup.add(backFill);
         } else if (style === 'ponytail') {
             const tail = new THREE.Mesh(
                 new THREE.ConeGeometry(0.20, 0.52, 14),
                 hairMat
             );
-            tail.position.set(0, -0.05, -0.52);
+            tail.position.set(0, -0.05, -0.54);
             tail.rotation.x = -0.85;
             hairGroup.add(tail);
         } else if (style === 'twintails') {
-            [-0.48, 0.48].forEach((xPos) => {
+            [-0.46, 0.46].forEach((xPos) => {
                 const tail = new THREE.Mesh(
                     new THREE.ConeGeometry(0.17, 0.52, 14),
                     hairMat
                 );
-                tail.position.set(xPos, -0.12, -0.08);
+                tail.position.set(xPos, -0.12, -0.22);
                 tail.rotation.z = xPos > 0 ? 0.45 : -0.45;
-                tail.rotation.x = 0.25;
+                tail.rotation.x = -0.20;
                 hairGroup.add(tail);
             });
         } else if (style === 'buns') {
-            [-0.38, 0.38].forEach((xPos) => {
+            [-0.36, 0.36].forEach((xPos) => {
                 const bun = new THREE.Mesh(
                     new THREE.SphereGeometry(0.18, 14, 14),
                     hairMat
                 );
-                bun.position.set(xPos, 0.32, -0.08);
+                bun.position.set(xPos, 0.34, -0.16);
                 hairGroup.add(bun);
             });
         } else if (style === 'bob') {
+            // Bob haircut strictly covering the back half (z <= 0)
             const bobBack = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.44, 0.47, 0.36, 18),
+                new THREE.CylinderGeometry(0.45, 0.48, 0.38, 18, 1, false, Math.PI * 0.52, Math.PI * 0.96),
                 hairMat
             );
-            bobBack.position.set(0, -0.08, -0.13);
+            bobBack.position.set(0, -0.14, -0.06);
             hairGroup.add(bobBack);
-
-            [-0.38, 0.38].forEach((xPos) => {
-                const sideBob = new THREE.Mesh(
-                    new THREE.SphereGeometry(0.15, 12, 12),
-                    hairMat
-                );
-                sideBob.scale.set(0.75, 1.35, 1.1);
-                sideBob.position.set(xPos, -0.08, -0.02);
-                hairGroup.add(sideBob);
-            });
         } else if (style === 'spiky') {
             const angles = [
-                [0, 0.48, 0.1, 0.2, 0],
-                [-0.25, 0.44, 0.0, 0.1, 0.45],
-                [0.25, 0.44, 0.0, 0.1, -0.45],
-                [0, 0.44, -0.22, -0.4, 0],
-                [-0.2, 0.40, -0.2, -0.3, 0.35],
-                [0.2, 0.40, -0.2, -0.3, -0.35]
+                [0, 0.50, -0.08, -0.2, 0],
+                [-0.24, 0.46, -0.10, -0.1, 0.45],
+                [0.24, 0.46, -0.10, -0.1, -0.45],
+                [0, 0.42, -0.28, -0.5, 0],
+                [-0.22, 0.38, -0.26, -0.4, 0.35],
+                [0.22, 0.38, -0.26, -0.4, -0.35]
             ];
             angles.forEach(([x, y, z, rx, rz]) => {
                 const spike = new THREE.Mesh(
@@ -802,19 +788,18 @@ class CharacterBuilder {
             });
         } else if (style === 'cap') {
             const dome = new THREE.Mesh(
-                new THREE.SphereGeometry(0.49, 18, 14, 0, Math.PI * 2, 0, Math.PI * 0.38),
+                new THREE.SphereGeometry(0.485, 18, 12, 0, Math.PI * 2, 0, Math.PI * 0.30),
                 topMat
             );
-            dome.rotation.x = -0.18;
-            dome.position.set(0, 0.10, -0.02);
+            dome.position.set(0, 0.06, -0.02);
             hairGroup.add(dome);
 
             const visor = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.46, 0.46, 0.045, 18, 1, false, -Math.PI * 0.35, Math.PI * 0.70),
+                new THREE.CylinderGeometry(0.45, 0.45, 0.04, 18, 1, false, -Math.PI * 0.32, Math.PI * 0.64),
                 topMat
             );
-            visor.position.set(0, 0.20, 0.24);
-            visor.rotation.x = 0.12;
+            visor.position.set(0, 0.26, 0.22);
+            visor.rotation.x = 0.10;
             hairGroup.add(visor);
         }
 

@@ -9,8 +9,9 @@
     <!-- Three.js & GLTFLoader -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-    <!-- PeerJS for Cross-Device WebRTC Multiplayer & QRCode.js -->
+    <!-- PeerJS WebRTC, MQTT over WSS Cloud PubSub & QRCode.js for Cross-Device Multiplayer -->
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <script src="https://unpkg.com/mqtt@5.3.4/dist/mqtt.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
@@ -21,9 +22,16 @@
     <!-- 3D Projected Runner Floating Name Badges (Ref Images 2 & 3) -->
     <div id="floating-labels-layer"></div>
 
-    <!-- Top Right Weather Switcher & Camera Controls (Collapsible on Mobile/Tablet) -->
+    <!-- Top Right Weather Switcher & Camera Zoom Controls (Collapsible on Mobile/Tablet) -->
     <div id="top-env-bar">
-        <button type="button" id="btn-env-menu-toggle" class="env-toggle-btn">🌤️ 天氣・視角・音效 ▾</button>
+        <div class="top-bar-row">
+            <div id="zoom-quick-bar" class="zoom-quick-pill" title="可使用滑鼠滾輪、雙指縮放或點擊按鈕調整視角遠近">
+                <button type="button" id="btn-zoom-out" class="zoom-step-btn" title="縮小視角（拉遠）">➖</button>
+                <button type="button" id="btn-zoom-reset" class="zoom-pct-btn" title="點擊恢復 100% 預設視角">🔍 100%</button>
+                <button type="button" id="btn-zoom-in" class="zoom-step-btn" title="放大視角（拉近）">➕</button>
+            </div>
+            <button type="button" id="btn-env-menu-toggle" class="env-toggle-btn">🌤️ 天氣・視角・音效 ▾</button>
+        </div>
         <div id="env-bar-items" class="env-bar-items">
             <span id="weather-live-label" class="weather-live-tag">偵測天氣中...</span>
             <button type="button" class="weather-btn active" data-weather="clear_clouds">🌤️ 藍天白雲</button>
@@ -32,6 +40,10 @@
             <button type="button" class="weather-btn" data-weather="rainy">🌧️ 下雨天</button>
             <button type="button" id="btn-toggle-camera" class="env-tool-btn">🎥 視角：背後跟隨</button>
             <button type="button" id="btn-toggle-sound" class="env-tool-btn">🔊 音效：開</button>
+            <div class="env-zoom-slider-row">
+                <span class="env-zoom-label">🔍 視角縮放</span>
+                <input id="zoom-range-slider" type="range" min="40" max="220" step="5" value="100" />
+            </div>
         </div>
     </div>
 
@@ -50,8 +62,8 @@
                     <div class="preview-name-banner">
                         <span id="preview-nickname-text">訪客42</span>
                     </div>
-                    <div id="char-preview-canvas-wrap" title="左右拖曳可旋轉預覽角色"></div>
-                    <div class="preview-drag-tip">↔ 可左右拖曳旋轉預覽 (.glb 骨骼模型)</div>
+                    <div id="char-preview-canvas-wrap" title="左右拖曳可旋轉預覽角色，滾輪或雙指可放大縮小"></div>
+                    <div class="preview-drag-tip">↔ 拖曳旋轉・🔍 滾輪 / 雙指 / 右上按鈕縮放</div>
                 </div>
 
                 <!-- Right Customization Options -->
@@ -182,8 +194,8 @@
             <!-- Stage 1 & 2: Direct Input + Virtual Keypad -->
             <div id="quiz-input-section">
                 <div class="quiz-input-row">
-                    <input id="quiz-answer-input" type="text" inputmode="none" readonly placeholder="點選下方數字鍵或直接按鍵盤輸入" autocomplete="off" />
-                    <button type="button" id="btn-submit-answer">送出</button>
+                    <input id="quiz-answer-input" type="text" size="1" inputmode="none" readonly placeholder="點選下方數字或按鍵盤" autocomplete="off" />
+                    <button type="button" id="btn-submit-answer">✅ 送出</button>
                 </div>
 
                 <div class="quiz-keypad">
@@ -200,6 +212,8 @@
                     <button type="button" class="keypad-btn" data-key="9">9</button>
                     <button type="button" class="keypad-btn" data-key="0">0</button>
                 </div>
+
+                <button type="button" id="btn-submit-answer-bottom" class="btn-quiz-submit-bottom">✅ 確認送出答案（Enter）</button>
             </div>
 
             <!-- Stage 3 Fallback (After 2 Wrong Inputs): 4-Option Multiple Choice -->

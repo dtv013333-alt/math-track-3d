@@ -28,6 +28,7 @@ class MathTrackGame {
         this.quizMode = 'INPUT'; // 'INPUT' | 'OPTIONS'
         this.raceElapsed = 0;
         this.cameraViewMode = 'BACK'; // 'BACK' (Ref Image 2) | 'FRONT' (Ref Image 3)
+        this.cameraZoom = 1.0; // User-controlled zoom magnification (0.40 = 40% wide out, 1.0 = 100%, 2.20 = 220% close-up)
 
         this.clock = new THREE.Clock();
         this.elapsedTotal = 0;
@@ -298,6 +299,88 @@ class MathTrackGame {
             });
         }
 
+        // Camera Zoom Controls (On-screen +/-/Reset buttons, Slider, Mouse Wheel & Touch Pinch-to-Zoom)
+        const zoomInBtn = document.getElementById('btn-zoom-in');
+        const zoomOutBtn = document.getElementById('btn-zoom-out');
+        const zoomResetBtn = document.getElementById('btn-zoom-reset');
+        const zoomSlider = document.getElementById('zoom-range-slider');
+
+        if (zoomInBtn) {
+            zoomInBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                window.soundManager.playClick();
+                this.setCameraZoom(this.cameraZoom + 0.15);
+            });
+        }
+        if (zoomOutBtn) {
+            zoomOutBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                window.soundManager.playClick();
+                this.setCameraZoom(this.cameraZoom - 0.15);
+            });
+        }
+        if (zoomResetBtn) {
+            zoomResetBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                window.soundManager.playClick();
+                this.setCameraZoom(1.0);
+            });
+        }
+        if (zoomSlider) {
+            zoomSlider.addEventListener('input', () => {
+                this.setCameraZoom(Number(zoomSlider.value) / 100);
+            });
+        }
+
+        // Mouse Wheel Zoom on 3D World or Character Preview Card
+        window.addEventListener('wheel', (e) => {
+            const previewWrap = document.getElementById('char-preview-canvas-wrap');
+            const isOverPreview = previewWrap && previewWrap.contains(e.target);
+
+            // Allow normal page scrolling inside the right-hand form of Character Creator or Multiplayer Modal
+            const creatorOverlay = document.getElementById('creator-overlay');
+            const mpModal = document.getElementById('multiplayer-modal');
+            const isCreatorOpen = creatorOverlay && !creatorOverlay.classList.contains('hidden');
+            const isMpOpen = mpModal && !mpModal.classList.contains('hidden');
+
+            if ((isCreatorOpen && !isOverPreview) || isMpOpen) {
+                return;
+            }
+
+            e.preventDefault();
+            const delta = e.deltaY < 0 ? 0.10 : -0.10;
+            this.setCameraZoom(this.cameraZoom + delta);
+        }, { passive: false });
+
+        // Two-Finger Pinch-to-Zoom for Mobile & Tablet Touchscreens
+        let pinchStartDist = 0;
+        let pinchStartZoom = 1.0;
+
+        window.addEventListener('touchstart', (e) => {
+            if (e.touches && e.touches.length === 2) {
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                pinchStartDist = Math.hypot(dx, dy);
+                pinchStartZoom = this.cameraZoom;
+            }
+        }, { passive: true });
+
+        window.addEventListener('touchmove', (e) => {
+            if (e.touches && e.touches.length === 2 && pinchStartDist > 10) {
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                const dist = Math.hypot(dx, dy);
+                const ratio = dist / pinchStartDist;
+                this.setCameraZoom(pinchStartZoom * ratio);
+            }
+        }, { passive: true });
+
+        window.addEventListener('touchend', (e) => {
+            if (!e.touches || e.touches.length < 2) {
+                pinchStartDist = 0;
+            }
+        }, { passive: true });
+
         // Auto detect current weather on startup
         this.world.syncRealTimeWeather((info) => {
             setWeatherUI(info.mode);
@@ -306,6 +389,28 @@ class MathTrackGame {
                 statusEl.textContent = `${info.cityLabel} ${info.temp}°C`;
             }
         });
+    }
+
+    setCameraZoom(newZoom) {
+        const clamped = Math.max(0.40, Math.min(2.20, Number(newZoom) || 1.0));
+        this.cameraZoom = clamped;
+
+        // Also zoom 3D character preview camera so users see immediate zoom feedback in Creator too
+        if (this.previewCamera) {
+            const previewDist = 3.65 / Math.pow(clamped, 0.72);
+            this.previewCamera.position.set(0, 1.15, previewDist);
+            this.previewCamera.lookAt(0, 0.98, 0);
+        }
+
+        const pct = Math.round(clamped * 100);
+        const resetBtn = document.getElementById('btn-zoom-reset');
+        if (resetBtn) {
+            resetBtn.textContent = `🔍 ${pct}%`;
+        }
+        const slider = document.getElementById('zoom-range-slider');
+        if (slider) {
+            slider.value = String(pct);
+        }
     }
 
     // =========================================================================
@@ -356,19 +461,30 @@ class MathTrackGame {
             const code = await mp.createRoom(this.playerConfig);
             document.getElementById('room-code-display').textContent = code;
             document.getElementById('host-room-panel').classList.remove('hidden');
-            document.getElementById('btn-host-start-race').disabled = false;
+            const startBtn = document.getElementById('btn-host-start-race');
+            startBtn.disabled = false;
+            startBtn.textContent = '🏁 開始聯動比賽（不足 4 人由電腦補齊）';
             this.updateRoomQRCode(code);
+        });
+
+        const joinInput = document.getElementById('join-room-input');
+        joinInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                document.getElementById('btn-join-room').click();
+            }
         });
 
         document.getElementById('btn-join-room').addEventListener('click', async () => {
             window.soundManager.playClick();
-            const code = document.getElementById('join-room-input').value.trim();
+            const code = joinInput.value.trim();
             const ok = await mp.joinRoom(code, this.playerConfig);
             if (ok) {
                 document.getElementById('room-code-display').textContent = code;
                 document.getElementById('host-room-panel').classList.remove('hidden');
-                document.getElementById('btn-host-start-race').disabled = true;
-                document.getElementById('btn-host-start-race').textContent = '等待房主開始比賽...';
+                const startBtn = document.getElementById('btn-host-start-race');
+                startBtn.disabled = true;
+                startBtn.textContent = '⏳ 等待房主開始比賽...';
                 this.updateRoomQRCode(code);
             }
         });
@@ -387,11 +503,13 @@ class MathTrackGame {
 
     openMultiplayerLobby() {
         document.getElementById('multiplayer-modal').classList.remove('hidden');
-        document.getElementById('btn-host-start-race').textContent = '🏁 開始聯動比賽（不足 4 人由電腦補齊）';
-        // Automatically create a room if no room code was typed in URL
         const joinVal = document.getElementById('join-room-input').value.trim();
-        if (!joinVal) {
-            document.getElementById('btn-create-room').click();
+        if (/^\d{4}$/.test(joinVal)) {
+            // If opened via QR Code URL (?room=XXXX), automatically join that room!
+            document.getElementById('btn-join-room').click();
+        } else if (!window.multiplayerManager.roomCode) {
+            document.getElementById('host-room-panel').classList.add('hidden');
+            window.multiplayerManager.notifyStatus('👉 房主請點「➕ 建立新房間」；其他載具請輸入 4 碼房號並點「加入房間」', 'info');
         }
     }
 
@@ -611,10 +729,16 @@ class MathTrackGame {
     initQuizUI() {
         const answerInput = document.getElementById('quiz-answer-input');
         const submitBtn = document.getElementById('btn-submit-answer');
+        const submitBottomBtn = document.getElementById('btn-submit-answer-bottom');
 
         submitBtn.addEventListener('click', () => {
             this.submitDirectAnswer();
         });
+        if (submitBottomBtn) {
+            submitBottomBtn.addEventListener('click', () => {
+                this.submitDirectAnswer();
+            });
+        }
 
         // Apply a virtual or physical key input without focusing the input element
         // (prevents mobile/tablet OS virtual keyboard from ever popping up!)
@@ -1187,6 +1311,18 @@ class MathTrackGame {
                 charPos.y + 1.0,
                 charPos.z + fz * 5.5
             );
+        }
+
+        // Apply user-controlled camera zoom magnification (0.40 = wide bird's-eye view, 2.20 = close-up view)
+        const zoomFactor = this.cameraZoom || 1.0;
+        if (Math.abs(zoomFactor - 1.0) > 0.001) {
+            const distScale = 1.0 / zoomFactor;
+            const anchor = new THREE.Vector3(charPos.x, charPos.y + 1.0, charPos.z);
+            const camOffset = desiredCamPos.clone().sub(anchor).multiplyScalar(distScale);
+            desiredCamPos.copy(anchor).add(camOffset);
+            if (desiredCamPos.y < charPos.y + 0.75) {
+                desiredCamPos.y = charPos.y + 0.75;
+            }
         }
 
         this.world.camera.position.lerp(desiredCamPos, Math.min(1, dt * 6.5));
