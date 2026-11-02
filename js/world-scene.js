@@ -224,21 +224,27 @@ class WorldScene {
         const rOut = this.innerRadius + this.totalTrackWidth;
 
         this.trackSurfaceMat = new THREE.MeshStandardMaterial({
-            color: '#e8a588', // Warm terracotta salmon-red matching Reference Image 2 & 3
+            color: '#e07a58', // Warm terracotta red track surface
+            emissive: '#e07a58',
+            emissiveIntensity: 0.12,
             roughness: 0.78,
-            metalness: 0.04
+            metalness: 0.04,
+            side: THREE.DoubleSide
         });
 
-        const surfaceMesh = this.createOvalRibbon(rIn - 0.25, rOut + 0.25, 0.02, this.trackSurfaceMat);
+        const surfaceMesh = this.createOvalRibbon(rIn - 0.25, rOut + 0.25, 0.025, this.trackSurfaceMat);
         surfaceMesh.receiveShadow = true;
         trackGroup.add(surfaceMesh);
 
         // White lane boundary lines (5 lines for 4 lanes)
-        const lineMat = new THREE.MeshBasicMaterial({ color: '#ffffff' });
+        const lineMat = new THREE.MeshBasicMaterial({
+            color: '#ffffff',
+            side: THREE.DoubleSide
+        });
         for (let i = 0; i <= this.numLanes; i++) {
             const rLine = this.innerRadius + i * this.laneWidth;
             const halfW = (i === 0 || i === this.numLanes) ? 0.09 : 0.055;
-            const lineRibbon = this.createOvalRibbon(rLine - halfW, rLine + halfW, 0.032, lineMat);
+            const lineRibbon = this.createOvalRibbon(rLine - halfW, rLine + halfW, 0.036, lineMat);
             trackGroup.add(lineRibbon);
         }
 
@@ -248,8 +254,8 @@ class WorldScene {
         const cols = 16;
         const cellW = this.totalTrackWidth / cols;
         const cellD = 0.42;
-        const blackMat = new THREE.MeshBasicMaterial({ color: '#222222' });
-        const whiteMat = new THREE.MeshBasicMaterial({ color: '#ffffff' });
+        const blackMat = new THREE.MeshBasicMaterial({ color: '#222222', side: THREE.DoubleSide });
+        const whiteMat = new THREE.MeshBasicMaterial({ color: '#ffffff', side: THREE.DoubleSide });
 
         for (let r = 0; r < rows; r++) {
             for (let c = 0; c < cols; c++) {
@@ -261,7 +267,7 @@ class WorldScene {
                 tile.rotation.x = -Math.PI * 0.5;
                 const xPos = -(this.innerRadius + (c + 0.5) * cellW);
                 const zPos = this.halfStraight - (r - 0.5) * cellD;
-                tile.position.set(xPos, 0.04, zPos);
+                tile.position.set(xPos, 0.046, zPos);
                 checkerGroup.add(tile);
             }
         }
@@ -325,13 +331,14 @@ class WorldScene {
             normals.push(0, 1, 0, 0, 1, 0);
         }
 
+        // Counter-clockwise (CCW) winding order when viewed from above (+Y) so front faces point UP!
         for (let i = 0; i < segments; i++) {
             const a = i * 2;
             const b = a + 1;
             const c = a + 2;
             const d = a + 3;
-            indices.push(a, b, c);
-            indices.push(b, d, c);
+            indices.push(a, c, b);
+            indices.push(b, c, d);
         }
 
         const geo = new THREE.BufferGeometry();
