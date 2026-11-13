@@ -634,24 +634,6 @@ class WorldScene {
         pavilion.add(courtFloor);
         campusGroup.add(pavilion);
 
-        // Floating Campus Landmark Sprites aligned with the buildings
-        const landmarks = [
-            { code: '05', title: '自然・電腦教室', x: -32, y: 16.5, z: -64, color: '#ef9a9a' },
-            { code: '13', title: '運動場', x: -20, y: 11.5, z: -50, color: '#ffcc80' },
-            { code: '04', title: '中高年級教室', x: -2, y: 18.0, z: -66, color: '#ce93d8' },
-            { code: '06', title: '低年級教室', x: 2, y: 15.0, z: -64, color: '#90caf9' },
-            { code: '08', title: '活動室', x: 28, y: 13.5, z: -54, color: '#a5d6a7' },
-            { code: '02', title: '穿堂', x: 38, y: 11.0, z: -22, color: '#80cbc4' }
-        ];
-
-        landmarks.forEach((lm) => {
-            const tex = this.createLandmarkPillTexture(lm.code, lm.title, lm.color);
-            const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true }));
-            sp.position.set(lm.x, lm.y, lm.z);
-            sp.scale.set(7.5, 2.0, 1);
-            campusGroup.add(sp);
-        });
-
         this.scene.add(campusGroup);
     }
 

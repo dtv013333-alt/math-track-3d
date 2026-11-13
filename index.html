@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>3D 正負數加減法操場賽跑｜Three.js 校園競速遊戲</title>
-    <link rel="stylesheet" href="./css/style.css?v=20261102c" />
+    <link rel="stylesheet" href="./css/style.css?v=20261113c" />
 
     <!-- Three.js & GLTFLoader -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -53,7 +53,7 @@
     <div id="creator-overlay">
         <div class="creator-container">
             <div class="creator-header-title">
-                建立你的角色，和三位對手（柯老師・阿維老師・Lisa）一起逛校園賽跑
+                建立你的角色，和對手一起賽跑
             </div>
 
             <div class="creator-body">
@@ -121,6 +121,19 @@
                         <label class="form-label">配件</label>
                         <div id="group-accessory" class="pill-group"></div>
                     </div>
+                </div>
+            </div>
+
+            <!-- Question Bank Selection (題庫一：正負數加減法 / 題庫二：平方與開根號) -->
+            <div class="creator-qbank-box">
+                <div class="qbank-title">📚 選擇比賽題目類型</div>
+                <div id="group-question-bank" class="pill-group qbank-pill-group">
+                    <button type="button" class="pill-btn qbank-choice-btn active" data-bank="pos_neg">
+                        ➕➖ 題庫一：正負數加減法
+                    </button>
+                    <button type="button" class="pill-btn qbank-choice-btn" data-bank="square_root">
+                        ²√ 題庫二：平方與開根號
+                    </button>
                 </div>
             </div>
 
@@ -212,8 +225,6 @@
                     <button type="button" class="keypad-btn" data-key="9">9</button>
                     <button type="button" class="keypad-btn" data-key="0">0</button>
                 </div>
-
-                <button type="button" id="btn-submit-answer-bottom" class="btn-quiz-submit-bottom">✅ 確認送出答案（Enter）</button>
             </div>
 
             <!-- Stage 3 Fallback (After 2 Wrong Inputs): 4-Option Multiple Choice -->
@@ -256,6 +267,14 @@
                 <div style="font-size:13.5px; font-weight:800; color:#334155;">目前 4 個跑道選手配置：</div>
                 <div id="lobby-slots-grid" class="lobby-slots-grid"></div>
 
+                <div class="lobby-qbank-row">
+                    <span style="font-size:13px; font-weight:800; color:#334155;">📚 房間題庫：</span>
+                    <div id="lobby-question-bank" class="pill-group">
+                        <button type="button" class="pill-btn qbank-choice-btn active" data-bank="pos_neg">➕➖ 正負數加減法</button>
+                        <button type="button" class="pill-btn qbank-choice-btn" data-bank="square_root">²√ 平方與開根號</button>
+                    </div>
+                </div>
+
                 <div style="display:flex; gap:10px; justify-content:flex-end;">
                     <button type="button" id="btn-close-lobby" class="btn-secondary-light">返回角色設定</button>
                     <button type="button" id="btn-host-start-race" class="btn-primary-orange">🏁 開始聯動比賽</button>
@@ -295,12 +314,12 @@
     </div>
 
     <!-- Game Scripts -->
-    <script src="./js/glb-data.js?v=20261102c"></script>
-    <script src="./js/sound.js?v=20261102c"></script>
-    <script src="./js/math-engine.js?v=20261102c"></script>
-    <script src="./js/character-builder.js?v=20261102c"></script>
-    <script src="./js/world-scene.js?v=20261102c"></script>
-    <script src="./js/multiplayer.js?v=20261102c"></script>
-    <script src="./js/main.js?v=20261102c"></script>
+    <script src="./js/glb-data.js?v=20261113c"></script>
+    <script src="./js/sound.js?v=20261113c"></script>
+    <script src="./js/math-engine.js?v=20261113c"></script>
+    <script src="./js/character-builder.js?v=20261113c"></script>
+    <script src="./js/world-scene.js?v=20261113c"></script>
+    <script src="./js/multiplayer.js?v=20261113c"></script>
+    <script src="./js/main.js?v=20261113c"></script>
 </body>
 </html>

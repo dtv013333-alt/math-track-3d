@@ -411,7 +411,8 @@ class MultiplayerManager {
                 this.onRaceStart({
                     players: this.players,
                     roomSeed: this.roomSeed,
-                    weatherMode: msg.weatherMode
+                    weatherMode: msg.weatherMode,
+                    questionBank: msg.questionBank || 'pos_neg'
                 });
             }
         } else if (msg.type === 'RUNNER_SYNC') {
@@ -455,7 +456,7 @@ class MultiplayerManager {
         return slots;
     }
 
-    hostTriggerStart(weatherMode) {
+    hostTriggerStart(weatherMode, questionBank = 'pos_neg') {
         if (!this.isHost) return;
         if (this.heartbeatTimer) {
             clearInterval(this.heartbeatTimer);
@@ -473,7 +474,8 @@ class MultiplayerManager {
             raceId,
             players: fullRoster,
             roomSeed: this.roomSeed,
-            weatherMode
+            weatherMode,
+            questionBank
         };
 
         // Send burst of 4 START_RACE packets over 900ms to guarantee 100% delivery across all mobile/Wi-Fi clients
@@ -486,7 +488,8 @@ class MultiplayerManager {
             this.onRaceStart({
                 players: fullRoster,
                 roomSeed: this.roomSeed,
-                weatherMode
+                weatherMode,
+                questionBank
             });
         }
     }

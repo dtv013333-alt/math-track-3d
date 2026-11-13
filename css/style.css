@@ -434,6 +434,53 @@ body, html {
     display: block;
 }
 
+/* Question Bank Selector Card */
+.creator-qbank-box {
+    margin-top: 18px;
+    padding: 13px 16px;
+    background: rgba(255, 255, 255, 0.90);
+    border: 2px solid #cbd5e1;
+    border-radius: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.04);
+}
+
+.qbank-title {
+    font-size: 14px;
+    font-weight: 800;
+    color: #2d3748;
+}
+
+.qbank-pill-group {
+    gap: 10px;
+}
+
+.qbank-choice-btn {
+    font-size: 14px;
+    padding: 9px 16px;
+}
+
+.qbank-choice-btn.active {
+    background: #fff3eb;
+    border: 2px solid #f26b1d;
+    color: #c2410c;
+    font-weight: 800;
+}
+
+.lobby-qbank-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+    padding: 10px 12px;
+    background: #f8fafc;
+    border-radius: 12px;
+    border: 1.5px solid #e2e8f0;
+}
+
 /* Creator Bottom Action Buttons (Ref Image 1) */
 .creator-actions-bar {
     margin-top: 20px;
@@ -723,6 +770,31 @@ body, html {
     margin: 8px 0;
     letter-spacing: 1px;
     font-family: "Consolas", "Monaco", "Microsoft JhengHei", monospace;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.math-sqrt {
+    display: inline-flex;
+    align-items: stretch;
+    vertical-align: middle;
+    line-height: 1.05;
+}
+
+.math-sqrt .sqrt-hook {
+    width: 0.58em;
+    height: auto;
+    display: block;
+    flex-shrink: 0;
+    margin-right: -1px;
+}
+
+.math-sqrt .sqrt-radicand {
+    border-top: 3.4px solid currentColor;
+    padding: 2px 6px 0 2px;
+    line-height: 1.05;
 }
 
 .quiz-feedback {

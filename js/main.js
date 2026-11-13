@@ -20,6 +20,7 @@ class MathTrackGame {
         // Race state
         this.runners = []; // 4 runners (lane 0..3)
         this.localRunner = null;
+        this.questionBank = 'pos_neg'; // 'pos_neg' (正負數加減法) | 'square_root' (平方與開根號)
         this.questions = [];
         this.totalQuestions = 10; // Fixed 10 questions per lap as requested
         this.currentQuestionIdx = 0;
@@ -206,6 +207,21 @@ class MathTrackGame {
         };
 
         renderAllControls();
+
+        // Question Bank Selector Buttons (Synced across Creator & Multiplayer Lobby)
+        const qbankBtns = document.querySelectorAll('.qbank-choice-btn');
+        const setQuestionBankUI = (bankMode) => {
+            this.questionBank = bankMode;
+            qbankBtns.forEach((b) => {
+                b.classList.toggle('active', b.dataset.bank === bankMode);
+            });
+        };
+        qbankBtns.forEach((btn) => {
+            btn.addEventListener('click', () => {
+                window.soundManager.playClick();
+                setQuestionBankUI(btn.dataset.bank || 'pos_neg');
+            });
+        });
 
         // Random Appearance Button (🎲 隨機外觀)
         document.getElementById('btn-random-look').addEventListener('click', () => {
@@ -431,13 +447,19 @@ class MathTrackGame {
             this.renderLobbySlots(slots);
         };
 
-        mp.onRaceStart = ({ players, roomSeed, weatherMode }) => {
+        mp.onRaceStart = ({ players, roomSeed, weatherMode, questionBank }) => {
             if (weatherMode) {
                 this.world.applyWeather(weatherMode);
             }
+            if (questionBank) {
+                this.questionBank = questionBank;
+                document.querySelectorAll('.qbank-choice-btn').forEach((b) => {
+                    b.classList.toggle('active', b.dataset.bank === questionBank);
+                });
+            }
             document.getElementById('multiplayer-modal').classList.add('hidden');
             document.getElementById('creator-overlay').classList.add('hidden');
-            this.beginRaceWithRoster(players, roomSeed);
+            this.beginRaceWithRoster(players, roomSeed, this.questionBank);
         };
 
         mp.onRunnerSync = (syncData) => {
@@ -491,7 +513,7 @@ class MathTrackGame {
 
         document.getElementById('btn-host-start-race').addEventListener('click', () => {
             window.soundManager.playClick();
-            mp.hostTriggerStart(this.world.weatherMode);
+            mp.hostTriggerStart(this.world.weatherMode, this.questionBank);
         });
 
         document.getElementById('btn-close-lobby').addEventListener('click', () => {
@@ -674,12 +696,13 @@ class MathTrackGame {
             { id: 'local',         lane: 3, isAI: false, config: this.playerConfig }
         ];
 
-        this.beginRaceWithRoster(singleRoster, null);
+        this.beginRaceWithRoster(singleRoster, null, this.questionBank);
     }
 
-    beginRaceWithRoster(roster, seed = null) {
+    beginRaceWithRoster(roster, seed = null, bankMode = null) {
+        const activeBank = bankMode || this.questionBank || 'pos_neg';
         this.spawnRunners(roster);
-        this.questions = window.mathEngine.generateQuestionSet(this.totalQuestions, seed);
+        this.questions = window.mathEngine.generateQuestionSet(this.totalQuestions, seed, activeBank);
         this.currentQuestionIdx = 0;
         this.wrongAttemptCount = 0;
         this.isQuizOpen = false;
@@ -729,16 +752,10 @@ class MathTrackGame {
     initQuizUI() {
         const answerInput = document.getElementById('quiz-answer-input');
         const submitBtn = document.getElementById('btn-submit-answer');
-        const submitBottomBtn = document.getElementById('btn-submit-answer-bottom');
 
         submitBtn.addEventListener('click', () => {
             this.submitDirectAnswer();
         });
-        if (submitBottomBtn) {
-            submitBottomBtn.addEventListener('click', () => {
-                this.submitDirectAnswer();
-            });
-        }
 
         // Apply a virtual or physical key input without focusing the input element
         // (prevents mobile/tablet OS virtual keyboard from ever popping up!)
@@ -828,12 +845,21 @@ class MathTrackGame {
         progressBadge.textContent = `第 ${q.index} / ${this.totalQuestions} 題`;
         typeBadge.textContent = q.typeName;
         typeBadge.style.backgroundColor = q.badgeColor;
-        exprEl.textContent = `${q.expression} = ?`;
 
-        feedbackEl.textContent = '請直接輸入正負數答案（答對可加速衝刺 ⚡）';
+        if (q.typeKey === 'SQUARE_ROOT' && q.radicand !== null && q.radicand !== undefined) {
+            exprEl.innerHTML = `<span class="math-sqrt" aria-label="√${q.radicand}"><svg class="sqrt-hook" viewBox="0 0 22 38" preserveAspectRatio="none" aria-hidden="true"><path d="M1.5 22 L6 19.5 L12.5 34.5 L20.5 1.8 L22 1.8" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="sqrt-radicand">${q.radicand}</span></span> = ?`;
+        } else {
+            exprEl.textContent = `${q.expression} = ?`;
+        }
+
+        feedbackEl.textContent = q.bankMode === 'square_root'
+            ? '請直接輸入平方或開根號的答案（答對可加速衝刺 ⚡）'
+            : '請直接輸入正負數答案（答對可加速衝刺 ⚡）';
         feedbackEl.className = 'quiz-feedback info';
-        hintEl.classList.add('hidden');
-        hintEl.textContent = q.hint;
+        if (hintEl) {
+            hintEl.classList.add('hidden');
+            hintEl.textContent = '';
+        }
 
         inputSection.classList.remove('hidden');
         optionsSection.classList.add('hidden');
@@ -898,8 +924,6 @@ class MathTrackGame {
             window.soundManager.playWrongFall();
 
             const feedbackEl = document.getElementById('quiz-feedback-msg');
-            const hintEl = document.getElementById('quiz-hint-box');
-            hintEl.classList.remove('hidden');
 
             if (this.wrongAttemptCount === 1) {
                 // First wrong attempt: show fall animation first, then prompt for 2nd input
@@ -943,7 +967,7 @@ class MathTrackGame {
                     window.soundManager.playWrongFall();
                     btn.classList.add('wrong');
                     btn.disabled = true;
-                    feedbackEl.textContent = `❌「${optVal}」還是不對喔！請看下方觀念提示，再選選看！`;
+                    feedbackEl.textContent = `❌「${optVal}」還是不對喔！請再選選看！`;
                 }
             });
             optionsGrid.appendChild(btn);
