@@ -232,11 +232,16 @@ class MathQuestionEngine {
         // 3. Pool of square roots: 2..20 (19 items, e.g. 根號4 ~ 根號400)
         const rootPool = shufflePool([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]);
 
-        // Balanced category schedule across 10 questions:
-        // 3 single-digit squares, 3 double-digit squares, 4 square roots (or 3/4/3)
-        const categories = ['SINGLE_SQ', 'SINGLE_SQ', 'SINGLE_SQ', 'DOUBLE_SQ', 'DOUBLE_SQ', 'DOUBLE_SQ', 'SQ_ROOT', 'SQ_ROOT', 'SQ_ROOT', 'SQ_ROOT'];
+        // Exact 10-question distribution for Question Bank 2:
+        // - 5 Square questions total: exactly 1 single-digit square (2×2~9×9) + 4 double-digit squares (10×10~20×20)
+        // - 5 Square Root questions (√4~√400)
+        const categories = [
+            'SINGLE_SQ',
+            'DOUBLE_SQ', 'DOUBLE_SQ', 'DOUBLE_SQ', 'DOUBLE_SQ',
+            'SQ_ROOT', 'SQ_ROOT', 'SQ_ROOT', 'SQ_ROOT', 'SQ_ROOT'
+        ];
         while (categories.length < totalCount) {
-            categories.push(['SINGLE_SQ', 'DOUBLE_SQ', 'SQ_ROOT'][categories.length % 3]);
+            categories.push(categories.length % 2 === 0 ? 'DOUBLE_SQ' : 'SQ_ROOT');
         }
         const scheduledCats = shufflePool(categories.slice(0, totalCount));
 

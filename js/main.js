@@ -197,7 +197,6 @@ class MathTrackGame {
             ], this.playerConfig.gender, (v) => { this.playerConfig.gender = v; });
 
             setupColorSwatches('group-skin', P.skinColors, this.playerConfig.skinColor, (v) => { this.playerConfig.skinColor = v; });
-            setupColorSwatches('group-eye', P.eyeColors, this.playerConfig.eyeColor, (v) => { this.playerConfig.eyeColor = v; });
             setupColorSwatches('group-hair-color', P.hairColors, this.playerConfig.hairColor, (v) => { this.playerConfig.hairColor = v; });
             setupPillGroup('group-hair-style', P.hairStyles, this.playerConfig.hairStyle, (v) => { this.playerConfig.hairStyle = v; });
             setupColorSwatches('group-top-color', P.topColors, this.playerConfig.topColor, (v) => { this.playerConfig.topColor = v; });
