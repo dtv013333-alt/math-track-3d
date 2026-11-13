@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>校園競速遊戲｜去操場學數學</title>
-    <link rel="stylesheet" href="./css/style.css?v=20261113c" />
+    <link rel="stylesheet" href="./css/style.css?v=20261113e" />
 
     <!-- Three.js & GLTFLoader -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -141,6 +141,7 @@
             <div class="creator-actions-bar">
                 <button type="button" id="btn-start-single" class="btn-primary-orange">進入校園（與電腦比賽）</button>
                 <button type="button" id="btn-open-multiplayer" class="btn-coop-blue">🌐 與他人聯動（跨載具同場）</button>
+                <button type="button" id="btn-creator-leaderboard" class="btn-secondary-light">🏆 排行榜</button>
                 <button type="button" id="btn-roam-campus" class="btn-secondary-light">先隨意看看</button>
             </div>
         </div>
@@ -307,19 +308,55 @@
             <div id="results-ranking-list" class="results-list"></div>
 
             <div class="results-btn-row">
+                <button type="button" id="btn-open-leaderboard" class="btn-result-action btn-result-leaderboard">🏆 排行榜</button>
                 <button type="button" id="btn-race-again" class="btn-result-action">再跑一次</button>
                 <button type="button" id="btn-back-campus" class="btn-result-action">回到校園</button>
             </div>
         </div>
     </div>
 
+    <!-- ===================================================================
+         7. Visitor Top-5 Leaderboard Modal (Separated by Question Bank Unit)
+         =================================================================== -->
+    <div id="leaderboard-modal" class="modal-backdrop hidden">
+        <div class="leaderboard-card">
+            <div class="leaderboard-header">
+                <div class="leaderboard-title">🏆 前五名訪客排行榜</div>
+                <div class="leaderboard-subtitle">僅紀錄破關訪客最快成績（不含電腦對手・同名保留最快紀錄）</div>
+            </div>
+
+            <div class="leaderboard-tabs">
+                <button type="button" class="lb-tab-btn active" data-unit="pos_neg">➕➖ 題庫一：正負數加減法</button>
+                <button type="button" class="lb-tab-btn" data-unit="square_root">²√ 題庫二：平方與開根號</button>
+            </div>
+
+            <div class="leaderboard-table-wrap">
+                <div class="lb-table-head">
+                    <span class="lb-col-rank">名次</span>
+                    <span class="lb-col-name">訪客名稱</span>
+                    <span class="lb-col-time">最快成績</span>
+                </div>
+                <div id="leaderboard-rows-container" class="lb-rows-body"></div>
+            </div>
+
+            <div class="lb-footer-meta">
+                <span id="leaderboard-source-status">📊 狀態：讀取中...</span>
+            </div>
+
+            <div class="results-btn-row" style="margin-top:14px;">
+                <button type="button" id="btn-close-leaderboard" class="btn-result-action">關閉排行榜</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Game Scripts -->
-    <script src="./js/glb-data.js?v=20261113c"></script>
-    <script src="./js/sound.js?v=20261113c"></script>
-    <script src="./js/math-engine.js?v=20261113c"></script>
-    <script src="./js/character-builder.js?v=20261113c"></script>
-    <script src="./js/world-scene.js?v=20261113c"></script>
-    <script src="./js/multiplayer.js?v=20261113c"></script>
-    <script src="./js/main.js?v=20261113c"></script>
+    <script src="./js/glb-data.js?v=20261113e"></script>
+    <script src="./js/sound.js?v=20261113e"></script>
+    <script src="./js/math-engine.js?v=20261113e"></script>
+    <script src="./js/character-builder.js?v=20261113e"></script>
+    <script src="./js/world-scene.js?v=20261113e"></script>
+    <script src="./js/multiplayer.js?v=20261113e"></script>
+    <script src="./js/leaderboard.js?v=20261113e"></script>
+    <script src="./js/main.js?v=20261113e"></script>
 </body>
 </html>

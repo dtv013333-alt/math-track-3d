@@ -1,0 +1,166 @@
+/**
+ * ============================================================================
+ * 📊 校園競速遊戲｜去操場學數學 - Google 試算表排行榜後端腳本 (Google Apps Script)
+ * ============================================================================
+ * 【使用步驟（約 2 分鐘）】：
+ * 1. 前往 Google 試算表 (https://sheets.new) 建立一份空白試算表，名稱可取為「去操場學數學_排行榜」。
+ * 2. 點選上方選單「擴充功能」 -> 「Apps Script」。
+ * 3. 將編輯器裡面原本的 `function myFunction() {}` 全部刪掉，把這整份程式碼貼上去，按 Ctrl+S 儲存。
+ * 4. 點選右上角藍色按鈕「部署」 -> 「新增部署作業」：
+ *    - 左上角齒輪「選取類型」勾選：「網頁應用程式 (Web App)」
+ *    - 執行身分：「我 (您的 Google 帳號)」
+ *    - 誰可以存取：「所有人 (Anyone)」 👈（務必選「所有人」，學生載具才能免登入寫入成績！）
+ * 5. 點選「部署」（若跳出核准權限視窗，點選「核對權限」-> 選您的帳號 -> 點左下角「進階」->「前往...(不安全)」->「允許」）。
+ * 6. 複製產生的「網頁應用程式網址」(結尾為 /exec)，貼回遊戲排行榜的「設定雲端試算表」或貼給我幫您寫入 js/leaderboard.js！
+ * ============================================================================
+ */
+
+const SHEET_NAMES = {
+  pos_neg: '正負數加減法',
+  square_root: '平方與開根號'
+};
+
+function getOrCreateUnitSheet(ss, bankMode) {
+  const sheetName = SHEET_NAMES[bankMode] || SHEET_NAMES.pos_neg;
+  let sheet = ss.getSheetByName(sheetName);
+  if (!sheet) {
+    sheet = ss.insertSheet(sheetName);
+    sheet.appendRow(['名次', '訪客名稱', '最快成績(秒)', '答對題數', '最後更新時間']);
+    sheet.getRange(1, 1, 1, 5).setFontWeight('bold').setBackground('#ffe0b2');
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
+
+function readAndNormalizeTop5(sheet) {
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return [];
+
+  const values = sheet.getRange(2, 1, lastRow - 1, 5).getValues();
+  const bestByName = new Map();
+
+  for (let i = 0; i < values.length; i++) {
+    const row = values[i];
+    const name = String(row[1] || '').trim();
+    const time = parseFloat(row[2]);
+    const correctCount = parseInt(row[3], 10) || 10;
+    const dateStr = row[4] ? String(row[4]) : '';
+
+    if (!name || isNaN(time) || time <= 0) continue;
+
+    if (!bestByName.has(name) || time < bestByName.get(name).time) {
+      bestByName.set(name, {
+        name: name,
+        time: Math.round(time * 10) / 10,
+        correctCount: correctCount,
+        date: dateStr
+      });
+    }
+  }
+
+  const sorted = Array.from(bestByName.values()).sort(function(a, b) {
+    return a.time - b.time;
+  });
+
+  return sorted.slice(0, 5);
+}
+
+function upsertAndSortSheet(sheet, playerName, finishTime, correctCount) {
+  const cleanName = String(playerName || '').trim();
+  const numTime = Math.round(parseFloat(finishTime) * 10) / 10;
+  if (!cleanName || isNaN(numTime) || numTime <= 0) return;
+
+  const nowStr = Utilities.formatDate(new Date(), 'Asia/Taipei', 'yyyy-MM-dd HH:mm:ss');
+  const lastRow = sheet.getLastRow();
+  const bestByName = new Map();
+
+  if (lastRow > 1) {
+    const values = sheet.getRange(2, 1, lastRow - 1, 5).getValues();
+    for (let i = 0; i < values.length; i++) {
+      const rowName = String(values[i][1] || '').trim();
+      const rowTime = parseFloat(values[i][2]);
+      const rowCorrect = parseInt(values[i][3], 10) || 10;
+      const rowDate = values[i][4] ? String(values[i][4]) : nowStr;
+      if (!rowName || isNaN(rowTime) || rowTime <= 0) continue;
+
+      if (!bestByName.has(rowName) || rowTime < bestByName.get(rowName).time) {
+        bestByName.set(rowName, {
+          name: rowName,
+          time: Math.round(rowTime * 10) / 10,
+          correctCount: rowCorrect,
+          date: rowDate
+        });
+      }
+    }
+  }
+
+  // 同名訪客只保留最快成績
+  if (!bestByName.has(cleanName) || numTime < bestByName.get(cleanName).time) {
+    bestByName.set(cleanName, {
+      name: cleanName,
+      time: numTime,
+      correctCount: parseInt(correctCount, 10) || 10,
+      date: nowStr
+    });
+  }
+
+  // 依完賽時間由短到長排序並寫回工作表
+  const sortedAll = Array.from(bestByName.values()).sort(function(a, b) {
+    return a.time - b.time;
+  });
+
+  if (lastRow > 1) {
+    sheet.getRange(2, 1, lastRow - 1, 5).clearContent();
+  }
+
+  if (sortedAll.length > 0) {
+    const outRows = sortedAll.map(function(item, idx) {
+      return [idx + 1, item.name, item.time, item.correctCount, item.date];
+    });
+    sheet.getRange(2, 1, outRows.length, 5).setValues(outRows);
+  }
+}
+
+function buildAllLeaderboards(ss) {
+  const sheetPosNeg = getOrCreateUnitSheet(ss, 'pos_neg');
+  const sheetSqRoot = getOrCreateUnitSheet(ss, 'square_root');
+  return {
+    pos_neg: readAndNormalizeTop5(sheetPosNeg),
+    square_root: readAndNormalizeTop5(sheetSqRoot)
+  };
+}
+
+function doGet(e) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const leaderboards = buildAllLeaderboards(ss);
+  return ContentService
+    .createTextOutput(JSON.stringify({ ok: true, leaderboards: leaderboards }))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function doPost(e) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const raw = (e && e.postData && e.postData.contents) ? e.postData.contents : '{}';
+    const body = JSON.parse(raw);
+
+    if (body && body.action === 'submit') {
+      const bankMode = body.bankMode === 'square_root' ? 'square_root' : 'pos_neg';
+      const sheet = getOrCreateUnitSheet(ss, bankMode);
+      upsertAndSortSheet(sheet, body.name, body.time, body.correctCount);
+    }
+
+    const leaderboards = buildAllLeaderboards(ss);
+    return ContentService
+      .createTextOutput(JSON.stringify({ ok: true, leaderboards: leaderboards }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ ok: false, error: String(err) }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } finally {
+    lock.releaseLock();
+  }
+}

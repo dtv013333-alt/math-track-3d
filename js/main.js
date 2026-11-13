@@ -246,6 +246,15 @@ class MathTrackGame {
             this.openMultiplayerLobby();
         });
 
+        // Open Visitor Top-5 Leaderboard from Creator screen
+        const creatorLbBtn = document.getElementById('btn-creator-leaderboard');
+        if (creatorLbBtn) {
+            creatorLbBtn.addEventListener('click', () => {
+                window.soundManager.playClick();
+                this.openLeaderboardModal(this.questionBank);
+            });
+        }
+
         // Free Campus Roam Preview (先隨意看看)
         document.getElementById('btn-roam-campus').addEventListener('click', () => {
             window.soundManager.playClick();
@@ -1076,6 +1085,16 @@ class MathTrackGame {
                         r.charCtrl.playAnimation('Cheer', 0.2);
                         window.soundManager.playFinishFanfare();
                         this.showFloatingToast(`🎉 衝過終點！用時 ${r.finishTime.toFixed(1)} 秒`, 'boost');
+                        if (window.leaderboardManager && !r.isAI) {
+                            window.leaderboardManager.recordFinishedScore({
+                                bankMode: this.questionBank,
+                                name: r.name,
+                                time: r.finishTime,
+                                correctCount: r.correctCount,
+                                isAI: false,
+                                finished: true
+                            });
+                        }
                         this.syncLocalRunner();
                         this.checkAllRunnersFinished();
                     }
@@ -1250,12 +1269,21 @@ class MathTrackGame {
     }
 
     initResultsUI() {
+        // "🏆 排行榜" button inside the 4-runner race results modal
+        const openLbBtn = document.getElementById('btn-open-leaderboard');
+        if (openLbBtn) {
+            openLbBtn.addEventListener('click', () => {
+                window.soundManager.playClick();
+                this.openLeaderboardModal(this.questionBank);
+            });
+        }
+
         // "再跑一次" button
         document.getElementById('btn-race-again').addEventListener('click', () => {
             window.soundManager.playClick();
             document.getElementById('results-modal').classList.add('hidden');
             if (window.multiplayerManager.roomCode && window.multiplayerManager.isHost) {
-                window.multiplayerManager.hostTriggerStart(this.world.weatherMode);
+                window.multiplayerManager.hostTriggerStart(this.world.weatherMode, this.questionBank);
             } else {
                 this.startSinglePlayerRace();
             }
@@ -1268,6 +1296,132 @@ class MathTrackGame {
             document.getElementById('race-hud').classList.add('hidden');
             document.getElementById('creator-overlay').classList.remove('hidden');
             this.state = 'CREATOR';
+        });
+
+        // Leaderboard Modal Tabs & Controls
+        this.activeLeaderboardUnit = 'pos_neg';
+        const lbTabs = document.querySelectorAll('.lb-tab-btn');
+        lbTabs.forEach((tab) => {
+            tab.addEventListener('click', () => {
+                window.soundManager.playClick();
+                const unit = tab.dataset.unit || 'pos_neg';
+                this.activeLeaderboardUnit = unit;
+                lbTabs.forEach(t => t.classList.toggle('active', t.dataset.unit === unit));
+                this.renderLeaderboardRows();
+            });
+        });
+
+        const closeLbBtn = document.getElementById('btn-close-leaderboard');
+        if (closeLbBtn) {
+            closeLbBtn.addEventListener('click', () => {
+                window.soundManager.playClick();
+                document.getElementById('leaderboard-modal').classList.add('hidden');
+            });
+        }
+
+        const toggleGasBtn = document.getElementById('btn-toggle-gas-config');
+        const gasPanel = document.getElementById('gas-config-panel');
+        const gasInput = document.getElementById('gas-url-input');
+        const saveGasBtn = document.getElementById('btn-save-gas-url');
+
+        if (toggleGasBtn && gasPanel) {
+            toggleGasBtn.addEventListener('click', () => {
+                window.soundManager.playClick();
+                gasPanel.classList.toggle('hidden');
+                if (gasInput && window.leaderboardManager) {
+                    gasInput.value = window.leaderboardManager.getScriptUrl();
+                }
+            });
+        }
+
+        if (saveGasBtn && gasInput) {
+            saveGasBtn.addEventListener('click', async () => {
+                window.soundManager.playClick();
+                if (window.leaderboardManager) {
+                    window.leaderboardManager.setCustomScriptUrl(gasInput.value);
+                    gasPanel.classList.add('hidden');
+                    await this.refreshLeaderboardFromSource();
+                }
+            });
+        }
+    }
+
+    async openLeaderboardModal(defaultUnit = 'pos_neg') {
+        const modal = document.getElementById('leaderboard-modal');
+        if (!modal) return;
+
+        this.activeLeaderboardUnit = defaultUnit === 'square_root' ? 'square_root' : 'pos_neg';
+        document.querySelectorAll('.lb-tab-btn').forEach((t) => {
+            t.classList.toggle('active', t.dataset.unit === this.activeLeaderboardUnit);
+        });
+
+        modal.classList.remove('hidden');
+        this.renderLeaderboardRows();
+        await this.refreshLeaderboardFromSource();
+    }
+
+    async refreshLeaderboardFromSource() {
+        if (!window.leaderboardManager) return;
+        const statusEl = document.getElementById('leaderboard-source-status');
+        if (statusEl) {
+            statusEl.textContent = '📊 狀態：正在同步排行榜資料...';
+        }
+
+        const res = await window.leaderboardManager.fetchLeaderboards();
+        this.renderLeaderboardRows();
+
+        if (statusEl) {
+            if (res.source === 'cloud') {
+                statusEl.textContent = '🟢 已連線：Google 試算表雲端排行榜';
+            } else if (res.source === 'local_fallback') {
+                statusEl.textContent = '🟡 離線備援：顯示本機快取排行（無法連線試算表）';
+            } else {
+                statusEl.textContent = '🟠 本機排行榜模式（點右側可綁定 Google 試算表）';
+            }
+        }
+    }
+
+    renderLeaderboardRows() {
+        const container = document.getElementById('leaderboard-rows-container');
+        if (!container || !window.leaderboardManager) return;
+
+        const unit = this.activeLeaderboardUnit || 'pos_neg';
+        const list = (window.leaderboardManager.cache && window.leaderboardManager.cache[unit]) || [];
+        const myName = (this.playerConfig && this.playerConfig.nickname || '').trim();
+
+        container.innerHTML = '';
+
+        if (list.length === 0) {
+            const empty = document.createElement('div');
+            empty.className = 'lb-empty-state';
+            empty.textContent = '目前此單元尚無訪客破關紀錄，快來成為第一名吧！🏃';
+            container.appendChild(empty);
+            return;
+        }
+
+        const medalIcons = ['🥇 第 1 名', '🥈 第 2 名', '🥉 第 3 名', '第 4 名', '第 5 名'];
+
+        list.slice(0, 5).forEach((item, idx) => {
+            const row = document.createElement('div');
+            const isMe = myName && item.name === myName;
+            row.className = `lb-row rank-${idx + 1}${isMe ? ' is-me' : ''}`;
+
+            const rankSpan = document.createElement('span');
+            rankSpan.className = 'lb-rank-badge';
+            rankSpan.textContent = medalIcons[idx] || `第 ${idx + 1} 名`;
+
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'lb-visitor-name';
+            nameSpan.textContent = item.name;
+
+            const timeSpan = document.createElement('span');
+            timeSpan.className = 'lb-visitor-time';
+            timeSpan.textContent = `${Number(item.time).toFixed(1)} 秒`;
+
+            row.appendChild(rankSpan);
+            row.appendChild(nameSpan);
+            row.appendChild(timeSpan);
+            container.appendChild(row);
         });
     }
 

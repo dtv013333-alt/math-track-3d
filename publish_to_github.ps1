@@ -84,6 +84,7 @@ $filesToUpload = @(
     "js/character-builder.js",
     "js/world-scene.js",
     "js/multiplayer.js",
+    "js/leaderboard.js",
     "js/main.js",
     "blender/generate_character_glb.py"
 )
